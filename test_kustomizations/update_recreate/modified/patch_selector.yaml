@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test
+spec:
+  selector:
+    matchLabels:
+      app: test
+      test-label: added
+  template:
+    metadata:
+      labels:
+        app: test
+        test-label: added
