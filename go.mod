@@ -5,7 +5,6 @@ go 1.12
 require (
 	cloud.google.com/go v0.47.0 // indirect
 	github.com/aws/aws-sdk-go v1.25.31 // indirect
-	github.com/davecgh/go-spew v1.1.1
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/go-openapi/jsonreference v0.19.3 // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
@@ -15,6 +14,7 @@ require (
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/jstemmer/go-junit-report v0.9.1 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/posener/complete v1.2.2 // indirect
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	go.opencensus.io v0.22.2 // indirect
