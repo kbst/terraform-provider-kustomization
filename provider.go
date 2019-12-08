@@ -1,18 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
-	"os"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 // Config ...
 type Config struct {
 	Client dynamic.Interface
 }
+
+const kubeconfigDefault = "~/.kube/config"
 
 // Provider ...
 func Provider() *schema.Provider {
@@ -24,16 +29,25 @@ func Provider() *schema.Provider {
 		DataSourcesMap: map[string]*schema.Resource{
 			"kustomization": dataSourceKustomization(),
 		},
+
+		Schema: map[string]*schema.Schema{
+			"kubeconfig": {
+				Type:     schema.TypeString,
+				Optional: true,
+				DefaultFunc: schema.MultiEnvDefaultFunc(
+					[]string{
+						"KUBE_CONFIG",
+						"KUBECONFIG",
+					},
+					kubeconfigDefault),
+				Description: fmt.Sprintf("Path to a kubeconfig file. Defaults to '%s'.", kubeconfigDefault),
+			},
+		},
 	}
 
 	p.ConfigureFunc = func(d *schema.ResourceData) (interface{}, error) {
-		kubeconfigPath := os.Getenv("KUBECONFIG")
-		data, err := ioutil.ReadFile(kubeconfigPath)
-		if err != nil {
-			return nil, err
-		}
-
-		kubeConfig, err := clientcmd.NewClientConfigFromBytes(data)
+		kubeconfigPath := d.Get("kubeconfig").(string)
+		kubeConfig, err := readKubeconfig(kubeconfigPath)
 		if err != nil {
 			return nil, err
 		}
@@ -52,4 +66,23 @@ func Provider() *schema.Provider {
 	}
 
 	return p
+}
+
+func readKubeconfig(s string) (clientcmd.ClientConfig, error) {
+	p, err := homedir.Expand(s)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ioutil.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+
+	kubeConfig, err := clientcmd.NewClientConfigFromBytes(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return kubeConfig, nil
 }
