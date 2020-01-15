@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/mitchellh/go-homedir"
@@ -31,7 +32,7 @@ func Provider() *schema.Provider {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"kubeconfig": {
+			"kubeconfig_path": {
 				Type:     schema.TypeString,
 				Optional: true,
 				DefaultFunc: schema.MultiEnvDefaultFunc(
@@ -42,19 +43,35 @@ func Provider() *schema.Provider {
 					kubeconfigDefault),
 				Description: fmt.Sprintf("Path to a kubeconfig file. Defaults to '%s'.", kubeconfigDefault),
 			},
+			"kubeconfig_raw": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "Raw kubeconfig file. If kubeconfig_raw is set,  kubeconfig_path is ignored.",
+			},
 		},
 	}
 
 	p.ConfigureFunc = func(d *schema.ResourceData) (interface{}, error) {
-		kubeconfigPath := d.Get("kubeconfig").(string)
-		kubeConfig, err := readKubeconfig(kubeconfigPath)
-		if err != nil {
-			return nil, err
-		}
+		var data []byte
+		var config *rest.Config
+		var err error
 
-		config, err := kubeConfig.ClientConfig()
+		raw := d.Get("kubeconfig_raw").(string)
+		data = []byte(raw)
+
+		// try to get a config from kubeconfig_raw
+		config, err = clientcmd.RESTConfigFromKubeConfig(data)
 		if err != nil {
-			return nil, err
+			// if kubeconfig_raw did not work, try kubeconfig_path
+			path := d.Get("kubeconfig_path").(string)
+			data, _ = readKubeconfigFile(path)
+
+			config, err = clientcmd.RESTConfigFromKubeConfig(data)
+			if err != nil {
+				// if neither worked we fall back to an empty default config
+				config = &rest.Config{}
+			}
 		}
 
 		client, err := dynamic.NewForConfig(config)
@@ -68,7 +85,7 @@ func Provider() *schema.Provider {
 	return p
 }
 
-func readKubeconfig(s string) (clientcmd.ClientConfig, error) {
+func readKubeconfigFile(s string) ([]byte, error) {
 	p, err := homedir.Expand(s)
 	if err != nil {
 		return nil, err
@@ -79,10 +96,5 @@ func readKubeconfig(s string) (clientcmd.ClientConfig, error) {
 		return nil, err
 	}
 
-	kubeConfig, err := clientcmd.NewClientConfigFromBytes(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return kubeConfig, nil
+	return data, nil
 }
