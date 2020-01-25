@@ -48,6 +48,14 @@ provider "kustomization" {
 }
 ```
 
+## State import for kustomization_resource
+
+To import existing Kubernetes resources into the Terraform state for above usage example, use a command like below and replace `apps_v1_Deployment|test-basic|test` accordingly. Please note the single quotes required for most shells.
+
+```
+terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
+```
+
 ## Building and Developing the Provider
 
 To work on the provider, you need go installed on your machine (version 1.13.x tested). The provider uses go mod to manage its dependencies, so GOPATH is not required.

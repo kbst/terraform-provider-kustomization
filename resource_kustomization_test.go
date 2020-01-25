@@ -58,6 +58,15 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 					testAccCheckDeploymentPurged("kustomization_resource.dep2"),
 				),
 			},
+			//
+			//
+			// Test state import
+			{
+				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-basic\"]",
+				ImportStateId:     "~G_v1_Namespace|~X|test-basic",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -134,6 +143,15 @@ func TestAccResourceKustomization_updateInplace(t *testing.T) {
 					testAccCheckManifestAnnotationAbsent("kustomization_resource.dep1", "test_annotation"),
 				),
 			},
+			//
+			//
+			// Test state import
+			{
+				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-update-inplace\"]",
+				ImportStateId:     "~G_v1_Namespace|~X|test-update-inplace",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
@@ -197,6 +215,15 @@ func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 					resource.TestCheckResourceAttrSet("kustomization_resource.dep1", "id"),
 					testAccCheckManifestSelectorAbsent("kustomization_resource.dep1", "test-label"),
 				),
+			},
+			//
+			//
+			// Test state import
+			{
+				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-update-recreate\"]",
+				ImportStateId:     "~G_v1_Namespace|~X|test-update-recreate",
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
