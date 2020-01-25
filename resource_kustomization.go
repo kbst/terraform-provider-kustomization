@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
+	"sigs.k8s.io/kustomize/api/resid"
+
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -24,6 +26,10 @@ func kustomizationResource() *schema.Resource {
 		Update:        kustomizationResourceUpdate,
 		Delete:        kustomizationResourceDelete,
 		CustomizeDiff: kustomizationResourceDiff,
+
+		Importer: &schema.ResourceImporter{
+			State: kustomizationResourceImport,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"manifest": &schema.Schema{
@@ -352,4 +358,34 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	d.SetId("")
 
 	return nil
+}
+
+func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+	client := m.(*Config).Client
+
+	rid := resid.FromString(d.Id())
+
+	gvr := k8sschema.GroupVersionResource{
+		Group:   rid.Gvk.Group,
+		Version: rid.Gvk.Version,
+		// TODO: fix this ugly shit
+		Resource: strings.ToLower(rid.Gvk.Kind) + "s",
+	}
+	namespace := rid.Namespace
+	name := rid.Name
+
+	resp, err := client.
+		Resource(gvr).
+		Namespace(namespace).
+		Get(name, k8smetav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("importing '%s' failed: %s", d.Id(), err)
+	}
+
+	id := string(resp.GetUID())
+	d.SetId(id)
+
+	d.Set("manifest", getLastAppliedConfig(resp))
+
+	return []*schema.ResourceData{d}, nil
 }
