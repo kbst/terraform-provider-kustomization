@@ -40,7 +40,11 @@ provider "kustomization" {
   # optional path to kubeconfig file
   # falls back to KUBECONFIG or KUBE_CONFIG env var
   # or finally '~/.kube/config'
-  kubeconfig = "/path/to/kubeconfig/file"
+  kubeconfig_path = "/path/to/kubeconfig/file"
+
+  # optional raw kubeconfig string
+  # overwrites kubeconfig_path
+  kubeconfig_raw = data.template_file.kubeconfig.rendered
 }
 ```
 

@@ -1,9 +1,11 @@
-module github.com/pst/terraform-provider-kustomize
+module github.com/kbst/terraform-provider-kustomize
 
 go 1.12
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
+
+	github.com/Azure/go-autorest v12.2.0+incompatible
 	github.com/aws/aws-sdk-go v1.25.31 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/go-openapi/jsonreference v0.19.3 // indirect

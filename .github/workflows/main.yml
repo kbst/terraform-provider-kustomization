@@ -1,4 +1,4 @@
-name: Acceptance Tests
+name: Run Tests
 
 on: push
 
@@ -20,9 +20,131 @@ jobs:
       with:
         go-version: "1.13.5"
 
-    - name: 'Run tests'
+    - name: 'Run TF acceptance tests'
       run: |
         export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
         go test -v
       env:
         TF_ACC: '1'
+
+  compile_provider:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 'Checkout'
+      uses: actions/checkout@v1
+
+    - name: 'Setup Go'
+      uses: actions/setup-go@v1
+      with:
+        go-version: "1.13.5"
+
+    - name: 'Compile provider'
+      run: |
+        go build -o terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        ls -al
+        pwd
+
+    - name: 'Upload provider binary'
+      uses: actions/upload-artifact@v1
+      with:
+        name: terraform.d
+        path: terraform.d
+
+  download_terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: 'Download Terraform'
+      run: |
+        wget https://releases.hashicorp.com/terraform/0.12.20/terraform_0.12.20_linux_amd64.zip
+        unzip terraform_0.12.20_linux_amd64.zip
+        ./terraform version
+
+    - name: 'Upload terraform binary'
+      uses: actions/upload-artifact@v1
+      with:
+        name: terraform
+        path: terraform
+
+  int_test_kubeconfig_path:
+    runs-on: ubuntu-latest
+    needs: [compile_provider, download_terraform]
+
+    steps:
+    - name: 'Checkout'
+      uses: actions/checkout@v1
+
+    - name: 'Download terraform binary'
+      uses: actions/download-artifact@v1
+      with:
+        name: terraform
+
+    - name: 'Download provider binary'
+      uses: actions/download-artifact@v1
+      with:
+        name: terraform.d
+
+    - name: 'Make binaries executable'
+      run: |
+        chmod +x ./terraform/terraform
+        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+
+    - name: 'Setup Kind'
+      uses: engineerd/setup-kind@v0.1.0
+      with:
+        version: "v0.6.1"
+
+    - name: 'Set KUBECONFIG env var'
+      run: |
+        export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
+
+    - name: 'Terraform Init'
+      run: ./terraform/terraform init
+
+    - name: 'Terraform Apply'
+      run: ./terraform/terraform apply --auto-approve
+
+  int_test_kubeconfig_raw:
+    runs-on: ubuntu-latest
+    needs: [compile_provider, download_terraform]
+
+    steps:
+    - name: 'Checkout'
+      uses: actions/checkout@v1
+
+    - name: 'Setup Kind'
+      uses: engineerd/setup-kind@v0.1.0
+      with:
+        version: "v0.6.1"
+
+    - name: 'Download terraform binary'
+      uses: actions/download-artifact@v1
+      with:
+        name: terraform
+
+    - name: 'Download provider binary'
+      uses: actions/download-artifact@v1
+      with:
+        name: terraform.d
+
+    - name: 'Make binaries executable'
+      run: |
+        chmod +x ./terraform/terraform
+        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+
+    - name: 'Create provider.tf with kubeconfig_raw'
+      run: |
+        unset KUBECONFIG
+        echo "provider "kustomization" {" > provider.tf
+        echo "  kubeconfig_raw = <<EOT" >> provider.tf
+        cat $(kind get kubeconfig-path --name="kind") >> provider.tf
+        echo "EOT" >> provider.tf
+        echo "}" >> provider.tf
+
+    - name: 'Terraform Init'
+      run: ./terraform/terraform init
+
+    - name: 'Terraform Apply'
+      run: ./terraform/terraform apply --auto-approve
