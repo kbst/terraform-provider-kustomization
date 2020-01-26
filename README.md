@@ -1,5 +1,7 @@
 # Terraform Provider Kustomize
 
+![Run Tests](https://github.com/kbst/terraform-provider-kustomize/workflows/Run%20Tests/badge.svg?branch=master&event=push)
+
 This provider aims to solve 3 common issues of applying a kustomization using kubectl by integrating Kustomize and Terraform.
 
  1. Lack of feedback what changes will be applied.
