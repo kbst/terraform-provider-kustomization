@@ -199,6 +199,7 @@ jobs:
         ./terraform/terraform import 'kustomization_resource.test["~G_v1_Namespace|~X|test-basic"]' '~G_v1_Namespace|~X|test-basic'
         ./terraform/terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
         ./terraform/terraform import 'kustomization_resource.test["~G_v1_Service|test-basic|test"]' '~G_v1_Service|test-basic|test'
+        ./terraform/terraform import 'kustomization_resource.test["networking.k8s.io_v1beta1_Ingress|test-basic|test"]' 'networking.k8s.io_v1beta1_Ingress|test-basic|test'
 
     - name: 'Terraform Apply'
       run: ./terraform/terraform apply --auto-approve

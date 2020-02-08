@@ -16,6 +16,8 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/restmapper"
 )
 
 func kustomizationResource() *schema.Resource {
@@ -40,15 +42,22 @@ func kustomizationResource() *schema.Resource {
 	}
 }
 
-func getGVR(u *k8sunstructured.Unstructured) k8sschema.GroupVersionResource {
-	gvk := u.GroupVersionKind()
-
-	return k8sschema.GroupVersionResource{
-		Group:   gvk.Group,
-		Version: gvk.Version,
-		// TODO: fix this ugly shit
-		Resource: strings.ToLower(gvk.Kind) + "s",
+func getGVR(gvk k8sschema.GroupVersionKind, cs *kubernetes.Clientset) (gvr k8sschema.GroupVersionResource, err error) {
+	gk := k8sschema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
+	agr, err := restmapper.GetAPIGroupResources(cs.Discovery())
+	if err != nil {
+		return gvr, fmt.Errorf("discovering API group resources failed: %s", err)
 	}
+
+	rm := restmapper.NewDiscoveryRESTMapper(agr)
+	mapping, err := rm.RESTMapping(gk, gvk.Version)
+	if err != nil {
+		return gvr, fmt.Errorf("mapping GroupKind failed: %s", err)
+	}
+
+	gvr = mapping.Resource
+
+	return gvr, nil
 }
 
 func parseJSON(json string) (ur *k8sunstructured.Unstructured, err error) {
@@ -65,6 +74,7 @@ func parseJSON(json string) (ur *k8sunstructured.Unstructured, err error) {
 
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
+	clientset := m.(*Config).Clientset
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -72,7 +82,10 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	gvr := getGVR(u)
+	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	if err != nil {
+		return err
+	}
 	namespace := u.GetNamespace()
 
 	setLastAppliedConfig(u, srcJSON)
@@ -95,13 +108,17 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
+	clientset := m.(*Config).Clientset
 
 	u, err := parseJSON(d.Get("manifest").(string))
 	if err != nil {
 		return err
 	}
 
-	gvr := getGVR(u)
+	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	if err != nil {
+		return err
+	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -123,6 +140,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	client := m.(*Config).Client
+	clientset := m.(*Config).Clientset
 
 	if !d.HasChange("manifest") {
 		return nil
@@ -143,7 +161,10 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return err
 	}
 
-	gvr := getGVR(o)
+	gvr, err := getGVR(o.GroupVersionKind(), clientset)
+	if err != nil {
+		return err
+	}
 	namespace := o.GetNamespace()
 	name := o.GetName()
 
@@ -214,13 +235,17 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 
 func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	client := m.(*Config).Client
+	clientset := m.(*Config).Clientset
 
 	u, err := parseJSON(d.Get("manifest").(string))
 	if err != nil {
 		return false, err
 	}
 
-	gvr := getGVR(u)
+	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	if err != nil {
+		return false, err
+	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -240,6 +265,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 
 func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
+	clientset := m.(*Config).Clientset
 
 	oldJSON, newJSON := d.GetChange("manifest")
 
@@ -260,7 +286,10 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	gvr := getGVR(o)
+	gvr, err := getGVR(o.GroupVersionKind(), clientset)
+	if err != nil {
+		return err
+	}
 	namespace := o.GetNamespace()
 	name := o.GetName()
 
@@ -313,13 +342,17 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
+	clientset := m.(*Config).Clientset
 
 	u, err := parseJSON(d.Get("manifest").(string))
 	if err != nil {
 		return err
 	}
 
-	gvr := getGVR(u)
+	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	if err != nil {
+		return err
+	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -362,15 +395,20 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
 	client := m.(*Config).Client
+	clientset := m.(*Config).Clientset
 
 	rid := resid.FromString(d.Id())
 
-	gvr := k8sschema.GroupVersionResource{
+	gvk := k8sschema.GroupVersionKind{
 		Group:   rid.Gvk.Group,
 		Version: rid.Gvk.Version,
-		// TODO: fix this ugly shit
-		Resource: strings.ToLower(rid.Gvk.Kind) + "s",
+		Kind:    rid.Gvk.Kind,
 	}
+	gvr, err := getGVR(gvk, clientset)
+	if err != nil {
+		return nil, err
+	}
+
 	namespace := rid.Namespace
 	name := rid.Name
 

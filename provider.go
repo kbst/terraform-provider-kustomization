@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -16,7 +17,8 @@ import (
 
 // Config ...
 type Config struct {
-	Client dynamic.Interface
+	Client    dynamic.Interface
+	Clientset *kubernetes.Clientset
 }
 
 const kubeconfigDefault = "~/.kube/config"
@@ -80,7 +82,12 @@ func Provider() *schema.Provider {
 			return nil, err
 		}
 
-		return &Config{client}, nil
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			return nil, err
+		}
+
+		return &Config{client, clientset}, nil
 	}
 
 	return p
