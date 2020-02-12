@@ -41,7 +41,8 @@ jobs:
 
     - name: 'Compile provider'
       run: |
-        go build -o terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        GOOS=linux GOARCH=amd64 go build -o terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        GOOS=darwin GOARCH=amd64 go build -o terraform.d/plugins/darwin_amd64/terraform-provider-kustomization
         ls -al
         pwd
 
