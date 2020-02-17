@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	k8scorev1 "k8s.io/api/core/v1"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -31,7 +33,7 @@ func getPatch(original []byte, modified []byte, current []byte) (patch []byte, e
 	patch, err = jsonmergepatch.CreateThreeWayJSONMergePatch(
 		original, modified, current, preconditions...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CreateThreeWayJSONMergePatch failed: %s", err)
 	}
 	return patch, nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"crypto/sha512"
 	"encoding/hex"
 
@@ -17,7 +18,7 @@ func getIDFromResources(rm resmap.ResMap) (s string, err error) {
 
 	yaml, err := rm.AsYaml()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("ResMap AsYaml failed: %s", err)
 	}
 	h.Write(yaml)
 
@@ -61,7 +62,7 @@ func runKustomizeBuild(path string) (rm resmap.ResMap, err error) {
 
 	rm, err = k.Run(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Kustomizer Run for path '%s' failed: %s", path, err)
 	}
 
 	return rm, nil
@@ -71,20 +72,20 @@ func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 	path := d.Get("path").(string)
 	rm, err := runKustomizeBuild(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("kustomizationBuild: %s", err)
 	}
 
 	d.Set("ids", flattenKustomizationIDs(rm))
 
 	resources, err := flattenKustomizationResources(rm)
 	if err != nil {
-		return err
+		return fmt.Errorf("kustomizationBuild: %s", err)
 	}
 	d.Set("manifests", resources)
 
 	id, err := getIDFromResources(rm)
 	if err != nil {
-		return err
+		return fmt.Errorf("kustomizationBuild: %s", err)
 	}
 	d.SetId(id)
 
