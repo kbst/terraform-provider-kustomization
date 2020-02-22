@@ -1,0 +1,4 @@
+resources:
+- namespace.yaml
+- crd.yaml
+- co.yaml
