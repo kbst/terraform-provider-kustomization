@@ -247,6 +247,76 @@ resource "kustomization_resource" "dep1" {
 
 //
 //
+// CRD Test
+func TestAccResourceKustomization_crd(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying both namespaced and cluster wide CRD
+			// and one custom object of each CRD
+			{
+				Config: testAccResourceKustomizationConfig_crd("test_kustomizations/crd"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.clusteredcrd",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.namespacedcrd",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.clusteredco",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.namespacedco",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.ns",
+						"id"),
+				),
+			},
+			//
+			//
+			// Test state import
+			{
+				ResourceName:      "kustomization_resource.test[\"apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com\"]",
+				ImportStateId:     "apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_crd(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "clusteredcrd" {
+  manifest = data.kustomization.test.manifests["apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com"]
+}
+
+resource "kustomization_resource" "namespacedcrd" {
+  manifest = data.kustomization.test.manifests["apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|namespacedcrds.test.example.com"]
+}
+
+resource "kustomization_resource" "clusteredco" {
+  manifest = data.kustomization.test.manifests["test.example.com_v1alpha1_Clusteredcrd|~X|clusteredco"]
+}
+
+resource "kustomization_resource" "namespacedco" {
+  manifest = data.kustomization.test.manifests["test.example.com_v1alpha1_Namespacedcrd|test-crd|namespacedco"]
+}
+
+resource "kustomization_resource" "ns" {
+  manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-crd"]
+}
+`
+}
+
+//
+//
 // Test check functions
 
 func testAccCheckDeploymentPurged(n string) resource.TestCheckFunc {

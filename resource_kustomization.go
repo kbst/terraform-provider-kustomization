@@ -43,16 +43,17 @@ func kustomizationResource() *schema.Resource {
 }
 
 func getGVR(gvk k8sschema.GroupVersionKind, cs *kubernetes.Clientset) (gvr k8sschema.GroupVersionResource, err error) {
-	gk := k8sschema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
 	agr, err := restmapper.GetAPIGroupResources(cs.Discovery())
 	if err != nil {
 		return gvr, fmt.Errorf("discovering API group resources failed: %s", err)
 	}
 
 	rm := restmapper.NewDiscoveryRESTMapper(agr)
+
+	gk := k8sschema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
 	mapping, err := rm.RESTMapping(gk, gvk.Version)
 	if err != nil {
-		return gvr, fmt.Errorf("mapping GroupKind failed: %s", err)
+		return gvr, fmt.Errorf("mapping GroupKind failed for '%s': %s", gvk, err)
 	}
 
 	gvr = mapping.Resource
@@ -82,13 +83,70 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("ResourceCreate: %s", err)
 	}
 
-	gvr, err := getGVR(u.GroupVersionKind(), clientset)
-	if err != nil {
-		return fmt.Errorf("ResourceCreate: %s", err)
+	stateConf := &resource.StateChangeConf{
+		Target:  []string{"existing"},
+		Pending: []string{"pending"},
+		Timeout: d.Timeout(schema.TimeoutCreate),
+		Refresh: func() (interface{}, string, error) {
+			// CRDs: wait for GroupVersionKind to exist
+			gvr, err := getGVR(u.GroupVersionKind(), clientset)
+			if err != nil {
+				return nil, "pending", nil
+			}
+
+			return gvr, "existing", nil
+		},
 	}
+	gvrResp, err := stateConf.WaitForState()
+	if err != nil {
+		return fmt.Errorf(
+			"ResourceCreate: GroupVersionKind '%s' %s",
+			u.GroupVersionKind(),
+			err)
+	}
+
+	gvr := gvrResp.(k8sschema.GroupVersionResource)
 	namespace := u.GetNamespace()
 
 	setLastAppliedConfig(u, srcJSON)
+
+	if namespace != "" {
+		// wait for the namespace to exist
+		nsGvk := k8sschema.GroupVersionKind{
+			Group:   "",
+			Version: "",
+			Kind:    "Namespace"}
+		nsGvr, err := getGVR(nsGvk, clientset)
+		if err != nil {
+			return fmt.Errorf("ResourceCreate: %s", err)
+		}
+
+		stateConf := &resource.StateChangeConf{
+			Target:  []string{"existing"},
+			Pending: []string{"pending"},
+			Timeout: d.Timeout(schema.TimeoutCreate),
+			Refresh: func() (interface{}, string, error) {
+				resp, err := client.
+					Resource(nsGvr).
+					Get(namespace, k8smetav1.GetOptions{})
+				if err != nil {
+					if k8serrors.IsNotFound(err) {
+						return nil, "pending", nil
+					}
+					return nil, "", err
+				}
+
+				return resp, "existing", nil
+			},
+		}
+		_, err = stateConf.WaitForState()
+		if err != nil {
+			return fmt.Errorf(
+				"ResourceCreate: namespace '%s' %s",
+				namespace,
+				err)
+		}
+	}
 
 	resp, err := client.
 		Resource(gvr).
@@ -361,6 +419,12 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 		Namespace(namespace).
 		Delete(name, nil)
 	if err != nil {
+		// Consider not found during deletion a success
+		if k8serrors.IsNotFound(err) {
+			d.SetId("")
+			return nil
+		}
+
 		return fmt.Errorf("ResourceDelete: deleting '%s' failed: %s", gvr, err)
 	}
 
@@ -377,7 +441,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 				if k8serrors.IsNotFound(err) {
 					return nil, "", nil
 				}
-				return nil, "", fmt.Errorf("ResourceDelete: refreshing '%s' state failed: %s", gvr, err)
+				return nil, "", fmt.Errorf("refreshing '%s' state failed: %s", gvr, err)
 			}
 
 			return resp, "deleting", nil
