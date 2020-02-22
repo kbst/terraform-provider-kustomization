@@ -12,12 +12,8 @@ import (
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/restmapper"
 )
 
 func kustomizationResource() *schema.Resource {
@@ -40,37 +36,6 @@ func kustomizationResource() *schema.Resource {
 			},
 		},
 	}
-}
-
-func getGVR(gvk k8sschema.GroupVersionKind, cs *kubernetes.Clientset) (gvr k8sschema.GroupVersionResource, err error) {
-	agr, err := restmapper.GetAPIGroupResources(cs.Discovery())
-	if err != nil {
-		return gvr, fmt.Errorf("discovering API group resources failed: %s", err)
-	}
-
-	rm := restmapper.NewDiscoveryRESTMapper(agr)
-
-	gk := k8sschema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
-	mapping, err := rm.RESTMapping(gk, gvk.Version)
-	if err != nil {
-		return gvr, fmt.Errorf("mapping GroupKind failed for '%s': %s", gvk, err)
-	}
-
-	gvr = mapping.Resource
-
-	return gvr, nil
-}
-
-func parseJSON(json string) (ur *k8sunstructured.Unstructured, err error) {
-	body := []byte(json)
-	u, err := k8sruntime.Decode(k8sunstructured.UnstructuredJSONScheme, body)
-	if err != nil {
-		return ur, err
-	}
-
-	ur = u.(*k8sunstructured.Unstructured)
-
-	return ur, nil
 }
 
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
