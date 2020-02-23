@@ -12,12 +12,8 @@ import (
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/restmapper"
 )
 
 func kustomizationResource() *schema.Resource {
@@ -40,37 +36,6 @@ func kustomizationResource() *schema.Resource {
 			},
 		},
 	}
-}
-
-func getGVR(gvk k8sschema.GroupVersionKind, cs *kubernetes.Clientset) (gvr k8sschema.GroupVersionResource, err error) {
-	agr, err := restmapper.GetAPIGroupResources(cs.Discovery())
-	if err != nil {
-		return gvr, fmt.Errorf("discovering API group resources failed: %s", err)
-	}
-
-	rm := restmapper.NewDiscoveryRESTMapper(agr)
-
-	gk := k8sschema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
-	mapping, err := rm.RESTMapping(gk, gvk.Version)
-	if err != nil {
-		return gvr, fmt.Errorf("mapping GroupKind failed for '%s': %s", gvk, err)
-	}
-
-	gvr = mapping.Resource
-
-	return gvr, nil
-}
-
-func parseJSON(json string) (ur *k8sunstructured.Unstructured, err error) {
-	body := []byte(json)
-	u, err := k8sruntime.Decode(k8sunstructured.UnstructuredJSONScheme, body)
-	if err != nil {
-		return ur, err
-	}
-
-	ur = u.(*k8sunstructured.Unstructured)
-
-	return ur, nil
 }
 
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
@@ -200,57 +165,33 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	client := m.(*Config).Client
 	clientset := m.(*Config).Clientset
 
+	originalJSON, modifiedJSON := d.GetChange("manifest")
+
 	if !d.HasChange("manifest") {
 		return nil
 	}
 
-	oldJSON, newJSON := d.GetChange("manifest")
-
-	if oldJSON.(string) == "" {
+	if originalJSON.(string) == "" {
 		return nil
 	}
 
-	n, err := parseJSON(newJSON.(string))
-	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
-	}
-	o, err := parseJSON(oldJSON.(string))
+	u, err := parseJSON(originalJSON.(string))
 	if err != nil {
 		return fmt.Errorf("ResourceDiff: %s", err)
 	}
 
-	gvr, err := getGVR(o.GroupVersionKind(), clientset)
+	gvr, err := getGVR(u.GroupVersionKind(), clientset)
 	if err != nil {
 		return fmt.Errorf("ResourceDiff: %s", err)
 	}
-	namespace := o.GetNamespace()
-	name := o.GetName()
+	namespace := u.GetNamespace()
+	name := u.GetName()
 
-	setLastAppliedConfig(o, oldJSON.(string))
-	setLastAppliedConfig(n, newJSON.(string))
-
-	original, err := o.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
-	}
-
-	modified, err := n.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
-	}
-
-	c, err := client.
-		Resource(gvr).
-		Namespace(namespace).
-		Get(name, k8smetav1.GetOptions{})
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("ResourceDiff: reading '%s' failed: %s", gvr, err)
-	}
-
-	current, err := c.MarshalJSON()
+	original, modified, current, err := getOriginalModifiedCurrent(
+		originalJSON.(string),
+		modifiedJSON.(string),
+		true,
+		m)
 	if err != nil {
 		return fmt.Errorf("ResourceDiff: %s", err)
 	}
@@ -325,54 +266,33 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	clientset := m.(*Config).Clientset
 
-	oldJSON, newJSON := d.GetChange("manifest")
+	originalJSON, modifiedJSON := d.GetChange("manifest")
 
 	if !d.HasChange("manifest") {
 		msg := fmt.Sprintf(
 			"Update called without change. old: %s, new: %s",
-			oldJSON,
-			newJSON)
+			originalJSON,
+			modifiedJSON)
 		return errors.New(msg)
 	}
 
-	n, err := parseJSON(newJSON.(string))
-	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
-	}
-	o, err := parseJSON(oldJSON.(string))
+	u, err := parseJSON(originalJSON.(string))
 	if err != nil {
 		return fmt.Errorf("ResourceUpdate: %s", err)
 	}
 
-	gvr, err := getGVR(o.GroupVersionKind(), clientset)
+	gvr, err := getGVR(u.GroupVersionKind(), clientset)
 	if err != nil {
 		return fmt.Errorf("ResourceUpdate: %s", err)
 	}
-	namespace := o.GetNamespace()
-	name := o.GetName()
+	namespace := u.GetNamespace()
+	name := u.GetName()
 
-	setLastAppliedConfig(o, oldJSON.(string))
-	setLastAppliedConfig(n, newJSON.(string))
-
-	original, err := o.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
-	}
-
-	modified, err := n.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
-	}
-
-	c, err := client.
-		Resource(gvr).
-		Namespace(namespace).
-		Get(name, k8smetav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("ResourceUpdate: reading '%s' failed: %s", gvr, err)
-	}
-
-	current, err := c.MarshalJSON()
+	original, modified, current, err := getOriginalModifiedCurrent(
+		originalJSON.(string),
+		modifiedJSON.(string),
+		false,
+		m)
 	if err != nil {
 		return fmt.Errorf("ResourceUpdate: %s", err)
 	}
