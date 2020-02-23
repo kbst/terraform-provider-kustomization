@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	k8scorev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,6 +29,59 @@ func setLastAppliedConfig(u *k8sunstructured.Unstructured, srcJSON string) {
 
 func getLastAppliedConfig(u *k8sunstructured.Unstructured) string {
 	return u.GetAnnotations()[lastAppliedConfig]
+}
+
+func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
+	client := m.(*Config).Client
+	clientset := m.(*Config).Clientset
+
+	n, err := parseJSON(modifiedJSON)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	o, err := parseJSON(originalJSON)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	setLastAppliedConfig(o, originalJSON)
+	setLastAppliedConfig(n, modifiedJSON)
+
+	gvr, err := getGVR(o.GroupVersionKind(), clientset)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	namespace := o.GetNamespace()
+	name := o.GetName()
+
+	original, err = o.MarshalJSON()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	modified, err = n.MarshalJSON()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	c, err := client.
+		Resource(gvr).
+		Namespace(namespace).
+		Get(name, k8smetav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) && currentAllowNotFound {
+			return original, modified, current, nil
+		}
+
+		return nil, nil, nil, fmt.Errorf("reading '%s' failed: %s", gvr, err)
+	}
+
+	current, err = c.MarshalJSON()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return original, modified, current, nil
 }
 
 func getPatch(original []byte, modified []byte, current []byte) (patch []byte, err error) {
