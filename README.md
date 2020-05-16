@@ -71,5 +71,5 @@ $ go build -o terraform.d/plugins/linux_amd64/terraform-provider-kustomization
 In order to test the provider, you can simply run the acceptance tests using `go test`. You can set the `KUBECONFIG` environment variable to point the tests to a specific cluster or set the context of your current config accordingly. The tests create namespaces on the current context. [Kind](https://github.com/kubernetes-sigs/kind) or [Minikube](https://github.com/kubernetes/minikube) clusters work well for testing.
 
 ```sh
-$ TF_ACC=1 go test -v
+$ TF_ACC=1 go test -v ./kustomize
 ```

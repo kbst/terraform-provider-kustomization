@@ -1,4 +1,4 @@
-package main
+package kustomize
 
 import (
 	"sigs.k8s.io/kustomize/api/resmap"

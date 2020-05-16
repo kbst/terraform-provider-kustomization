@@ -1,4 +1,4 @@
-package main
+package kustomize
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 			//
 			// Applying initial config with a svc and deployment in a namespace
 			{
-				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial"),
+				Config: testAccResourceKustomizationConfig_basicInitial("../test_kustomizations/basic/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -37,7 +37,7 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 			//
 			// Applying modified config adding another deployment to the namespace
 			{
-				Config: testAccResourceKustomizationConfig_basicModified("test_kustomizations/basic/modified"),
+				Config: testAccResourceKustomizationConfig_basicModified("../test_kustomizations/basic/modified"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -50,7 +50,7 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 			// Reverting back to initial config with only one deployment
 			// check that second deployment was purged
 			{
-				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial"),
+				Config: testAccResourceKustomizationConfig_basicInitial("../test_kustomizations/basic/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -108,7 +108,7 @@ func TestAccResourceKustomization_updateInplace(t *testing.T) {
 			//
 			// Applying initial config with a svc and deployment in a namespace
 			{
-				Config: testAccResourceKustomizationConfig_updateInplace("test_kustomizations/update_inplace/initial"),
+				Config: testAccResourceKustomizationConfig_updateInplace("../test_kustomizations/update_inplace/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -119,7 +119,7 @@ func TestAccResourceKustomization_updateInplace(t *testing.T) {
 			//
 			// Applying modified config adding an annotation to each resource
 			{
-				Config: testAccResourceKustomizationConfig_updateInplace("test_kustomizations/update_inplace/modified"),
+				Config: testAccResourceKustomizationConfig_updateInplace("../test_kustomizations/update_inplace/modified"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -133,7 +133,7 @@ func TestAccResourceKustomization_updateInplace(t *testing.T) {
 			//
 			// Applying initial config again, ensure annotations are removed again
 			{
-				Config: testAccResourceKustomizationConfig_updateInplace("test_kustomizations/update_inplace/initial"),
+				Config: testAccResourceKustomizationConfig_updateInplace("../test_kustomizations/update_inplace/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -185,7 +185,7 @@ func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 			//
 			// Applying initial config with a svc and deployment in a namespace
 			{
-				Config: testAccResourceKustomizationConfig_updateRecreate("test_kustomizations/update_recreate/initial"),
+				Config: testAccResourceKustomizationConfig_updateRecreate("../test_kustomizations/update_recreate/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -196,7 +196,7 @@ func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 			//
 			// Applying modified config changing the immutable label selectors
 			{
-				Config: testAccResourceKustomizationConfig_updateRecreate("test_kustomizations/update_recreate/modified"),
+				Config: testAccResourceKustomizationConfig_updateRecreate("../test_kustomizations/update_recreate/modified"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -208,7 +208,7 @@ func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 			//
 			// Applying initial config again, ensure label selector is back to original state
 			{
-				Config: testAccResourceKustomizationConfig_updateRecreate("test_kustomizations/update_recreate/initial"),
+				Config: testAccResourceKustomizationConfig_updateRecreate("../test_kustomizations/update_recreate/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -259,7 +259,7 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 			// Applying both namespaced and cluster wide CRD
 			// and one custom object of each CRD
 			{
-				Config: testAccResourceKustomizationConfig_crd("test_kustomizations/crd"),
+				Config: testAccResourceKustomizationConfig_crd("../test_kustomizations/crd"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(
 						"kustomization_resource.clusteredcrd",
