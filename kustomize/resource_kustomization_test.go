@@ -1,6 +1,7 @@
 package kustomize
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -74,15 +75,15 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 func testAccResourceKustomizationConfig_basicInitial(path string) string {
 	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
-  manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-basic"]
+	manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-basic"]
 }
 
 resource "kustomization_resource" "svc" {
-  manifest = data.kustomization.test.manifests["~G_v1_Service|test-basic|test"]
+	manifest = data.kustomization.test.manifests["~G_v1_Service|test-basic|test"]
 }
 
 resource "kustomization_resource" "dep1" {
-  manifest = data.kustomization.test.manifests["apps_v1_Deployment|test-basic|test"]
+	manifest = data.kustomization.test.manifests["apps_v1_Deployment|test-basic|test"]
 }
 `
 }
@@ -90,7 +91,7 @@ resource "kustomization_resource" "dep1" {
 func testAccResourceKustomizationConfig_basicModified(path string) string {
 	return testAccResourceKustomizationConfig_basicInitial(path) + `
 resource "kustomization_resource" "dep2" {
-  manifest = data.kustomization.test.manifests["apps_v1_Deployment|test-basic|test2"]
+	manifest = data.kustomization.test.manifests["apps_v1_Deployment|test-basic|test2"]
 }
 `
 }
@@ -159,15 +160,15 @@ func TestAccResourceKustomization_updateInplace(t *testing.T) {
 func testAccResourceKustomizationConfig_updateInplace(path string) string {
 	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
-  manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-update-inplace"]
+	manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-update-inplace"]
 }
 
 resource "kustomization_resource" "svc" {
-  manifest = data.kustomization.test.manifests["~G_v1_Service|test-update-inplace|test"]
+	manifest = data.kustomization.test.manifests["~G_v1_Service|test-update-inplace|test"]
 }
 
 resource "kustomization_resource" "dep1" {
-  manifest = data.kustomization.test.manifests["apps_v1_Deployment|test-update-inplace|test"]
+	manifest = data.kustomization.test.manifests["apps_v1_Deployment|test-update-inplace|test"]
 }
 `
 }
@@ -232,15 +233,15 @@ func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 func testAccResourceKustomizationConfig_updateRecreate(path string) string {
 	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
-  manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-update-recreate"]
+	manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-update-recreate"]
 }
 
 resource "kustomization_resource" "svc" {
-  manifest = data.kustomization.test.manifests["~G_v1_Service|test-update-recreate|test"]
+	manifest = data.kustomization.test.manifests["~G_v1_Service|test-update-recreate|test"]
 }
 
 resource "kustomization_resource" "dep1" {
-  manifest = data.kustomization.test.manifests["apps_v1_Deployment|test-update-recreate|test"]
+	manifest = data.kustomization.test.manifests["apps_v1_Deployment|test-update-recreate|test"]
 }
 `
 }
@@ -294,23 +295,23 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 func testAccResourceKustomizationConfig_crd(path string) string {
 	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "clusteredcrd" {
-  manifest = data.kustomization.test.manifests["apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com"]
+	manifest = data.kustomization.test.manifests["apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com"]
 }
 
 resource "kustomization_resource" "namespacedcrd" {
-  manifest = data.kustomization.test.manifests["apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|namespacedcrds.test.example.com"]
+	manifest = data.kustomization.test.manifests["apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|namespacedcrds.test.example.com"]
 }
 
 resource "kustomization_resource" "clusteredco" {
-  manifest = data.kustomization.test.manifests["test.example.com_v1alpha1_Clusteredcrd|~X|clusteredco"]
+	manifest = data.kustomization.test.manifests["test.example.com_v1alpha1_Clusteredcrd|~X|clusteredco"]
 }
 
 resource "kustomization_resource" "namespacedco" {
-  manifest = data.kustomization.test.manifests["test.example.com_v1alpha1_Namespacedcrd|test-crd|namespacedco"]
+	manifest = data.kustomization.test.manifests["test.example.com_v1alpha1_Namespacedcrd|test-crd|namespacedco"]
 }
 
 resource "kustomization_resource" "ns" {
-  manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-crd"]
+	manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-crd"]
 }
 `
 }
@@ -334,7 +335,7 @@ func testAccCheckDeploymentPurged(n string) resource.TestCheckFunc {
 		_, k8serr := client.
 			Resource(gvr).
 			Namespace(namespace).
-			Get(name, k8smetav1.GetOptions{})
+			Get(context.TODO(), name, k8smetav1.GetOptions{})
 		if k8serr != nil {
 			if !k8serrors.IsNotFound(k8serr) {
 				return fmt.Errorf("Unexpected error from K8s api: %s", k8serr)
@@ -376,7 +377,7 @@ func getResourceFromK8sAPI(u *k8sunstructured.Unstructured) (resp *k8sunstructur
 	resp, err = client.
 		Resource(gvr).
 		Namespace(namespace).
-		Get(name, k8smetav1.GetOptions{})
+		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

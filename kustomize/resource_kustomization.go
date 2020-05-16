@@ -1,6 +1,7 @@
 package kustomize
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -93,7 +94,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			Refresh: func() (interface{}, string, error) {
 				resp, err := client.
 					Resource(nsGvr).
-					Get(namespace, k8smetav1.GetOptions{})
+					Get(context.TODO(), namespace, k8smetav1.GetOptions{})
 				if err != nil {
 					if k8serrors.IsNotFound(err) {
 						return nil, "pending", nil
@@ -116,7 +117,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	resp, err := client.
 		Resource(gvr).
 		Namespace(namespace).
-		Create(u, k8smetav1.CreateOptions{})
+		Create(context.TODO(), u, k8smetav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("ResourceCreate: creating '%s' failed: %s", gvr, err)
 	}
@@ -148,7 +149,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	resp, err := client.
 		Resource(gvr).
 		Namespace(namespace).
-		Get(name, k8smetav1.GetOptions{})
+		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("ResourceRead: reading '%s' failed: %s", gvr, err)
 	}
@@ -206,7 +207,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	_, err = client.
 		Resource(gvr).
 		Namespace(namespace).
-		Patch(name, k8stypes.MergePatchType, patch, dryRunPatch)
+		Patch(context.TODO(), name, k8stypes.MergePatchType, patch, dryRunPatch)
 	if err != nil {
 		//
 		//
@@ -251,7 +252,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 	_, err = client.
 		Resource(gvr).
 		Namespace(namespace).
-		Get(name, k8smetav1.GetOptions{})
+		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return false, nil
@@ -305,7 +306,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	patchResp, err := client.
 		Resource(gvr).
 		Namespace(namespace).
-		Patch(name, k8stypes.MergePatchType, patch, k8smetav1.PatchOptions{})
+		Patch(context.TODO(), name, k8stypes.MergePatchType, patch, k8smetav1.PatchOptions{})
 	if err != nil {
 		return fmt.Errorf("ResourceUpdate: patching '%s' failed: %s", gvr, err)
 	}
@@ -337,7 +338,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	err = client.
 		Resource(gvr).
 		Namespace(namespace).
-		Delete(name, nil)
+		Delete(context.TODO(), name, k8smetav1.DeleteOptions{})
 	if err != nil {
 		// Consider not found during deletion a success
 		if k8serrors.IsNotFound(err) {
@@ -356,7 +357,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 			resp, err := client.
 				Resource(gvr).
 				Namespace(namespace).
-				Get(name, k8smetav1.GetOptions{})
+				Get(context.TODO(), name, k8smetav1.GetOptions{})
 			if err != nil {
 				if k8serrors.IsNotFound(err) {
 					return nil, "", nil
@@ -399,7 +400,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	resp, err := client.
 		Resource(gvr).
 		Namespace(namespace).
-		Get(name, k8smetav1.GetOptions{})
+		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("ResourceImport: reading '%s' failed: %s", gvr, err)
 	}

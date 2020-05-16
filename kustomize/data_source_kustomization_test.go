@@ -30,7 +30,7 @@ func TestAccDataSourceKustomization_basic(t *testing.T) {
 func testAccDataSourceKustomizationConfig_basic(path string) string {
 	return fmt.Sprintf(`
 data "kustomization" "test" {
-  path = "%s"
+	path = "%s"
 }
 `, path)
 }
