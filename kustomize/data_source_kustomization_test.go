@@ -1,4 +1,4 @@
-package main
+package kustomize
 
 import (
 	"fmt"
@@ -14,11 +14,11 @@ func TestAccDataSourceKustomization_basic(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataSourceKustomizationConfig_basic("test_kustomizations/basic/initial"),
+				Config: testAccDataSourceKustomizationConfig_basic("../test_kustomizations/basic/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.kustomization.test", "id"),
 					resource.TestCheckResourceAttrSet("data.kustomization.test", "path"),
-					resource.TestCheckResourceAttr("data.kustomization.test", "path", "test_kustomizations/basic/initial"),
+					resource.TestCheckResourceAttr("data.kustomization.test", "path", "../test_kustomizations/basic/initial"),
 					resource.TestCheckResourceAttr("data.kustomization.test", "ids.#", "4"),
 					resource.TestCheckResourceAttr("data.kustomization.test", "manifests.%", "4"),
 				),
@@ -30,7 +30,7 @@ func TestAccDataSourceKustomization_basic(t *testing.T) {
 func testAccDataSourceKustomizationConfig_basic(path string) string {
 	return fmt.Sprintf(`
 data "kustomization" "test" {
-  path = "%s"
+	path = "%s"
 }
 `, path)
 }

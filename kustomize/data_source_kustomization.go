@@ -1,9 +1,9 @@
-package main
+package kustomize
 
 import (
-	"fmt"
 	"crypto/sha512"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 

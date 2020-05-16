@@ -1,6 +1,7 @@
-package main
+package kustomize
 
 import (
+	"context"
 	"fmt"
 
 	k8scorev1 "k8s.io/api/core/v1"
@@ -67,7 +68,7 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 	c, err := client.
 		Resource(gvr).
 		Namespace(namespace).
-		Get(name, k8smetav1.GetOptions{})
+		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) && currentAllowNotFound {
 			return original, modified, current, nil

@@ -1,4 +1,4 @@
-package main
+package kustomize
 
 import (
 	"fmt"
@@ -76,6 +76,10 @@ func Provider() *schema.Provider {
 				config = &rest.Config{}
 			}
 		}
+
+		// Increase QPS and Burst rate limits
+		config.QPS = 120
+		config.Burst = 240
 
 		client, err := dynamic.NewForConfig(config)
 		if err != nil {
