@@ -184,12 +184,12 @@ jobs:
     - name: 'Download kustomize'
       run: |
         wget https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.5.4/kustomize_v3.5.4_linux_amd64.tar.gz
-        tar xvf kustomize_v3.5.4_linux_amd64.tar.gz
-        ./kustomize version
+        sudo tar -C /usr/local/bin -xvf kustomize_v3.5.4_linux_amd64.tar.gz
+        kustomize version
 
     - name: 'Kubectl apply'
       run: |
-        ./kustomize build test_kustomizations/basic/initial | kubectl apply -f -
+        kustomize build test_kustomizations/basic/initial | kubectl apply -f -
 
     - name: 'Terraform Init'
       run: ./terraform/terraform init
