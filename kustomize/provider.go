@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -52,6 +51,12 @@ func Provider() *schema.Provider {
 				Default:     "",
 				Description: "Raw kubeconfig file. If kubeconfig_raw is set,  kubeconfig_path is ignored.",
 			},
+			"context": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.",
+			},
 		},
 	}
 
@@ -60,21 +65,36 @@ func Provider() *schema.Provider {
 		var config *rest.Config
 		var err error
 
+		// always use kubeconfig_raw as priority
 		raw := d.Get("kubeconfig_raw").(string)
 		data = []byte(raw)
 
-		// try to get a config from kubeconfig_raw
-		config, err = clientcmd.RESTConfigFromKubeConfig(data)
-		if err != nil {
-			// if kubeconfig_raw did not work, try kubeconfig_path
+		if len(raw) == 0 {
+			// if kubeconfig_raw is empty, use kubeconfig_path
 			path := d.Get("kubeconfig_path").(string)
-			data, _ = readKubeconfigFile(path)
-
-			config, err = clientcmd.RESTConfigFromKubeConfig(data)
+			data, err = readKubeconfigFile(path)
 			if err != nil {
-				// if neither worked we fall back to an empty default config
-				config = &rest.Config{}
+				return nil, err
 			}
+		}
+
+		rawConfig, err := clientcmd.Load(data)
+		if err != nil {
+			return nil, err
+		}
+
+		context := d.Get("context").(string)
+
+		if len(context) > 0 {
+			// use specified context
+			config, err = clientcmd.NewNonInteractiveClientConfig(*rawConfig, context, &clientcmd.ConfigOverrides{CurrentContext: context}, nil).ClientConfig()
+		} else {
+			// use default context
+			config, err = clientcmd.NewDefaultClientConfig(*rawConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		// Increase QPS and Burst rate limits

@@ -47,6 +47,10 @@ provider "kustomization" {
   # optional raw kubeconfig string
   # overwrites kubeconfig_path
   kubeconfig_raw = data.template_file.kubeconfig.rendered
+
+  # optional context to use in kubeconfig with multiple contexts
+  # if unspecified, the default (current) context is used
+  context = "my-context"
 }
 ```
 
