@@ -2,4 +2,3 @@
 terraform.d
 *.tfstate*
 crash.log
-*.iml
