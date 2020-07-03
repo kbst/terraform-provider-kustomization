@@ -57,6 +57,12 @@ func Provider() *schema.Provider {
 				Default:     "",
 				Description: "Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.",
 			},
+			"disable_local_cluster_fallback": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Switch to disable fallback to default client when kubeconfig_raw/kubeconfig_file don't work.",
+			},
 		},
 	}
 
@@ -64,6 +70,8 @@ func Provider() *schema.Provider {
 		var data []byte
 		var config *rest.Config
 		var err error
+
+		disableLocalClusterFallback := d.Get("disable_local_cluster_fallback").(bool)
 
 		// always use kubeconfig_raw as priority
 		raw := d.Get("kubeconfig_raw").(string)
@@ -74,27 +82,37 @@ func Provider() *schema.Provider {
 			path := d.Get("kubeconfig_path").(string)
 			data, err = readKubeconfigFile(path)
 			if err != nil {
-				return nil, err
+				if disableLocalClusterFallback {
+					return nil, err
+				}
+				data = []byte{}
 			}
 		}
 
 		rawConfig, err := clientcmd.Load(data)
-		if err != nil {
+		if err != nil && disableLocalClusterFallback {
 			return nil, err
 		}
 
-		context := d.Get("context").(string)
-
-		if len(context) > 0 {
-			// use specified context
-			config, err = clientcmd.NewNonInteractiveClientConfig(*rawConfig, context, &clientcmd.ConfigOverrides{CurrentContext: context}, nil).ClientConfig()
+		if rawConfig == nil {
+			config = &rest.Config{}
 		} else {
-			// use default context
-			config, err = clientcmd.NewDefaultClientConfig(*rawConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
-		}
+			context := d.Get("context").(string)
 
-		if err != nil {
-			return nil, err
+			if len(context) > 0 {
+				// use specified context
+				config, err = clientcmd.NewNonInteractiveClientConfig(*rawConfig, context, &clientcmd.ConfigOverrides{CurrentContext: context}, nil).ClientConfig()
+			} else {
+				// use default context
+				config, err = clientcmd.NewDefaultClientConfig(*rawConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+			}
+
+			if err != nil {
+				if disableLocalClusterFallback {
+					return nil, err
+				}
+				config = &rest.Config{}
+			}
 		}
 
 		// Increase QPS and Burst rate limits

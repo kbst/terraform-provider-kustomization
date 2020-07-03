@@ -51,6 +51,10 @@ provider "kustomization" {
   # optional context to use in kubeconfig with multiple contexts
   # if unspecified, the default (current) context is used
   context = "my-context"
+
+  // optional flag (false by default) to disable fallback to default kubernetes client that points to
+  // the cluster running on localhost when kubeconfig_raw or kubeconfig_path fails to work
+  disable_local_cluster_fallback = true
 }
 ```
 
