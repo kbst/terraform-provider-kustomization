@@ -73,12 +73,10 @@ func Provider() *schema.Provider {
 
 		disableLocalClusterFallback := d.Get("disable_local_cluster_fallback").(bool)
 
-		// always use kubeconfig_raw as priority
 		raw := d.Get("kubeconfig_raw").(string)
 		data = []byte(raw)
 
 		if len(raw) == 0 {
-			// if kubeconfig_raw is empty, use kubeconfig_path
 			path := d.Get("kubeconfig_path").(string)
 			data, err = readKubeconfigFile(path)
 			if err != nil {
