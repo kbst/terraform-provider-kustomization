@@ -74,8 +74,6 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	gvr := gvrResp.(k8sschema.GroupVersionResource)
 	namespace := u.GetNamespace()
 
-	setLastAppliedConfig(u, srcJSON)
-
 	if namespace != "" {
 		// wait for the namespace to exist
 		nsGvk := k8sschema.GroupVersionKind{
@@ -125,7 +123,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
+	d.Set("manifest", getSimplified(resp, []byte(srcJSON)))
 
 	return kustomizationResourceRead(d, m)
 }
@@ -134,7 +132,9 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	clientset := m.(*Config).Clientset
 
-	u, err := parseJSON(d.Get("manifest").(string))
+	srcJSON := d.Get("manifest").(string)
+	u, err := parseJSON(srcJSON)
+
 	if err != nil {
 		return fmt.Errorf("ResourceRead: %s", err)
 	}
@@ -157,7 +157,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
+	d.Set("manifest", getSimplified(resp, []byte(srcJSON)))
 
 	return nil
 }
@@ -314,7 +314,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	id := string(patchResp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(patchResp))
+	d.Set("manifest", getSimplified(patchResp, modified))
 
 	return kustomizationResourceRead(d, m)
 }
@@ -408,7 +408,8 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
+	srcJSON := d.Get("manifest").(string)
+	d.Set("manifest", getSimplified(resp, []byte(srcJSON)))
 
 	return []*schema.ResourceData{d}, nil
 }
