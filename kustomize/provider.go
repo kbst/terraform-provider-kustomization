@@ -52,6 +52,12 @@ func Provider() *schema.Provider {
 				Default:     "",
 				Description: "Raw kubeconfig file. If kubeconfig_raw is set,  kubeconfig_path is ignored.",
 			},
+			"context": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.",
+			},
 		},
 	}
 
@@ -60,17 +66,18 @@ func Provider() *schema.Provider {
 		var config *rest.Config
 		var err error
 
+		context := d.Get("context").(string)
 		raw := d.Get("kubeconfig_raw").(string)
 		data = []byte(raw)
 
 		// try to get a config from kubeconfig_raw
-		config, err = clientcmd.RESTConfigFromKubeConfig(data)
+		config, err = getClientConfig(data, context)
 		if err != nil {
 			// if kubeconfig_raw did not work, try kubeconfig_path
 			path := d.Get("kubeconfig_path").(string)
 			data, _ = readKubeconfigFile(path)
 
-			config, err = clientcmd.RESTConfigFromKubeConfig(data)
+			config, err = getClientConfig(data, context)
 			if err != nil {
 				// if neither worked we fall back to an empty default config
 				config = &rest.Config{}
@@ -109,4 +116,23 @@ func readKubeconfigFile(s string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func getClientConfig(data []byte, context string) (*rest.Config, error) {
+	if len(context) == 0 {
+		return clientcmd.RESTConfigFromKubeConfig(data)
+	}
+
+	rawConfig, err := clientcmd.Load(data)
+	if err != nil {
+		return nil, err
+	}
+
+	var clientConfig clientcmd.ClientConfig = clientcmd.NewNonInteractiveClientConfig(
+		*rawConfig,
+		context,
+		&clientcmd.ConfigOverrides{CurrentContext: context},
+		nil)
+
+	return clientConfig.ClientConfig()
 }
