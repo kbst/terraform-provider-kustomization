@@ -207,7 +207,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	_, err = client.
 		Resource(gvr).
 		Namespace(namespace).
-		Patch(context.TODO(), name, k8stypes.MergePatchType, patch, dryRunPatch)
+		Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patch, dryRunPatch)
 	if err != nil {
 		//
 		//
@@ -306,7 +306,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	patchResp, err := client.
 		Resource(gvr).
 		Namespace(namespace).
-		Patch(context.TODO(), name, k8stypes.MergePatchType, patch, k8smetav1.PatchOptions{})
+		Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patch, k8smetav1.PatchOptions{})
 	if err != nil {
 		return fmt.Errorf("ResourceUpdate: patching '%s' failed: %s", gvr, err)
 	}
