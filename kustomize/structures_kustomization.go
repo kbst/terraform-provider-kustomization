@@ -2,7 +2,6 @@ package kustomize
 
 import (
 	"sigs.k8s.io/kustomize/api/resmap"
-	"strings"
 )
 
 func flattenKustomizationIDs(rm resmap.ResMap) (ids []string) {
@@ -21,7 +20,7 @@ func flattenKustomizationResources(rm resmap.ResMap) (res map[string]string, err
 		if err != nil {
 			return nil, err
 		}
-		res[id] = strings.Trim(string(json), "\n")
+		res[id] = string(json)
 	}
 
 	return res, nil

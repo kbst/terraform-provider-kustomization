@@ -3,7 +3,8 @@ package kustomize
 import (
 	"context"
 	"fmt"
-	jsonpatch "github.com/evanphx/json-patch"
+
+	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -16,36 +17,19 @@ import (
 	"k8s.io/apimachinery/pkg/util/mergepatch"
 )
 
-// Get a simplified json from resp by stripping excessive fields based on targeted.
-// Mainly for eliminating unwanted noisy diff in terraform plan.
-func getSimplified(resp *k8sunstructured.Unstructured, targeted []byte) string {
-	bytes, _ := resp.MarshalJSON()
-	simplified, _ := simplifyJSON(bytes, targeted)
-	return string(simplified)
+const lastAppliedConfig = k8scorev1.LastAppliedConfigAnnotation
+
+func setLastAppliedConfig(u *k8sunstructured.Unstructured, srcJSON string) {
+	annotations := u.GetAnnotations()
+	if len(annotations) == 0 {
+		annotations = make(map[string]string)
+	}
+	annotations[lastAppliedConfig] = srcJSON
+	u.SetAnnotations(annotations)
 }
 
-func simplifyJSON(full, targeted []byte) (simplified []byte, err error) {
-	if cap(targeted) == 0 {
-		return full, nil
-	}
-	var preconditions []mergepatch.PreconditionFunc
-
-	patch1, err := jsonmergepatch.CreateThreeWayJSONMergePatch(targeted, full, full, preconditions...)
-	if err != nil {
-		return nil, err
-	}
-
-	patched, err := jsonpatch.MergePatch(full, patch1)
-	if err != nil {
-		return nil, err
-	}
-
-	patch2, err := jsonmergepatch.CreateThreeWayJSONMergePatch(full, targeted, targeted, preconditions...)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsonpatch.MergePatch(patched, patch2)
+func getLastAppliedConfig(u *k8sunstructured.Unstructured) string {
+	return u.GetAnnotations()[lastAppliedConfig]
 }
 
 func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
@@ -60,6 +44,9 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	setLastAppliedConfig(o, originalJSON)
+	setLastAppliedConfig(n, modifiedJSON)
 
 	gvr, err := getGVR(o.GroupVersionKind(), clientset)
 	if err != nil {
