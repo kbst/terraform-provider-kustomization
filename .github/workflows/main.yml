@@ -23,7 +23,7 @@ jobs:
     - name: 'Run TF acceptance tests'
       run: |
         export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
-        go test -v
+        make test
       env:
         TF_ACC: '1'
 
