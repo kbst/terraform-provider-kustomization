@@ -8,6 +8,7 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.8.0 // indirect
 	github.com/aws/aws-sdk-go v1.25.31 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
+	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-openapi/jsonreference v0.19.3 // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gophercloud/gophercloud v0.6.0 // indirect
