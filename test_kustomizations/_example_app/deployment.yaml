@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   labels:
     app: test
   name: test
@@ -19,6 +18,9 @@ spec:
     spec:
       containers:
       - image: nginx
+        imagePullPolicy: Always
         name: nginx
         resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
 status: {}

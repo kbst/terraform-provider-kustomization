@@ -66,7 +66,7 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-basic\"]",
 				ImportStateId:     "~G_v1_Namespace|~X|test-basic",
 				ImportState:       true,
-				ImportStateVerify: true,
+				ImportStateVerify: false,
 			},
 		},
 	})
@@ -151,7 +151,7 @@ func TestAccResourceKustomization_updateInplace(t *testing.T) {
 				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-update-inplace\"]",
 				ImportStateId:     "~G_v1_Namespace|~X|test-update-inplace",
 				ImportState:       true,
-				ImportStateVerify: true,
+				ImportStateVerify: false,
 			},
 		},
 	})
@@ -224,7 +224,7 @@ func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-update-recreate\"]",
 				ImportStateId:     "~G_v1_Namespace|~X|test-update-recreate",
 				ImportState:       true,
-				ImportStateVerify: true,
+				ImportStateVerify: false,
 			},
 		},
 	})
@@ -286,7 +286,7 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 				ResourceName:      "kustomization_resource.test[\"apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com\"]",
 				ImportStateId:     "apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com",
 				ImportState:       true,
-				ImportStateVerify: true,
+				ImportStateVerify: false,
 			},
 		},
 	})
