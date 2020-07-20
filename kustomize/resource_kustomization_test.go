@@ -365,9 +365,9 @@ func getResourceFromTestState(s *terraform.State, n string) (ur *k8sunstructured
 
 func getResourceFromK8sAPI(u *k8sunstructured.Unstructured) (resp *k8sunstructured.Unstructured, err error) {
 	client := testAccProvider.Meta().(*Config).Client
-	clientset := testAccProvider.Meta().(*Config).Clientset
+	cgvk := testAccProvider.Meta().(*Config).CachedGroupVersionKind
 
-	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
 		return nil, err
 	}

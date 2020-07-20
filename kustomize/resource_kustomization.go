@@ -41,7 +41,7 @@ func kustomizationResource() *schema.Resource {
 
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
-	clientset := m.(*Config).Clientset
+	cgvk := m.(*Config).CachedGroupVersionKind
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -55,7 +55,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		Timeout: d.Timeout(schema.TimeoutCreate),
 		Refresh: func() (interface{}, string, error) {
 			// CRDs: wait for GroupVersionKind to exist
-			gvr, err := getGVR(u.GroupVersionKind(), clientset)
+			gvr, err := cgvk.getGVR(u.GroupVersionKind(), true)
 			if err != nil {
 				return nil, "pending", nil
 			}
@@ -80,7 +80,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			Group:   "",
 			Version: "",
 			Kind:    "Namespace"}
-		nsGvr, err := getGVR(nsGvk, clientset)
+		nsGvr, err := cgvk.getGVR(nsGvk, false)
 		if err != nil {
 			return fmt.Errorf("ResourceCreate: %s", err)
 		}
@@ -130,7 +130,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
-	clientset := m.(*Config).Clientset
+	cgvk := m.(*Config).CachedGroupVersionKind
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -139,7 +139,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("ResourceRead: %s", err)
 	}
 
-	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
 		return fmt.Errorf("ResourceRead: %s", err)
 	}
@@ -164,7 +164,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	client := m.(*Config).Client
-	clientset := m.(*Config).Clientset
+	cgvk := m.(*Config).CachedGroupVersionKind
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
 
@@ -181,7 +181,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return fmt.Errorf("ResourceDiff: %s", err)
 	}
 
-	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
 		return fmt.Errorf("ResourceDiff: %s", err)
 	}
@@ -235,14 +235,14 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 
 func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	client := m.(*Config).Client
-	clientset := m.(*Config).Clientset
+	cgvk := m.(*Config).CachedGroupVersionKind
 
 	u, err := parseJSON(d.Get("manifest").(string))
 	if err != nil {
 		return false, fmt.Errorf("ResourceExists: %s", err)
 	}
 
-	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
 		return false, fmt.Errorf("ResourceExists: %s", err)
 	}
@@ -265,7 +265,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 
 func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
-	clientset := m.(*Config).Clientset
+	cgvk := m.(*Config).CachedGroupVersionKind
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
 
@@ -282,7 +282,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("ResourceUpdate: %s", err)
 	}
 
-	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
 		return fmt.Errorf("ResourceUpdate: %s", err)
 	}
@@ -321,14 +321,14 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
-	clientset := m.(*Config).Clientset
+	cgvk := m.(*Config).CachedGroupVersionKind
 
 	u, err := parseJSON(d.Get("manifest").(string))
 	if err != nil {
 		return fmt.Errorf("ResourceDelete: %s", err)
 	}
 
-	gvr, err := getGVR(u.GroupVersionKind(), clientset)
+	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
 		return fmt.Errorf("ResourceDelete: %s", err)
 	}
@@ -380,7 +380,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
 	client := m.(*Config).Client
-	clientset := m.(*Config).Clientset
+	cgvk := m.(*Config).CachedGroupVersionKind
 
 	rid := resid.FromString(d.Id())
 
@@ -389,7 +389,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 		Version: rid.Gvk.Version,
 		Kind:    rid.Gvk.Kind,
 	}
-	gvr, err := getGVR(gvk, clientset)
+	gvr, err := cgvk.getGVR(gvk, false)
 	if err != nil {
 		return nil, fmt.Errorf("ResourceImport: %s", err)
 	}

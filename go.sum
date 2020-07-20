@@ -465,6 +465,9 @@ github.com/onsi/ginkgo v1.11.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+
 github.com/onsi/gomega v0.0.0-20170829124025-dcabb60a477c/go.mod h1:C1qb7wdrVGGVU+Z6iS04AVkA3Q65CEZX59MT0QO5uiA=
 github.com/onsi/gomega v1.7.0 h1:XPnZz8VVBHjVsy1vzJmRwIcSwiUO+JFfrv/xGiigmME=
 github.com/onsi/gomega v1.7.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
+github.com/patrickmn/go-cache v1.0.0 h1:3gD5McaYs9CxjyK5AXGcq8gdeCARtd/9gJDUvVeaZ0Y=
+github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
+github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/paulmach/orb v0.1.3/go.mod h1:VFlX/8C+IQ1p6FTRRKzKoOPJnvEtA5G0Veuqwbu//Vk=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
@@ -900,12 +903,8 @@ mvdan.cc/unparam v0.0.0-20190720180237-d51796306d8f/go.mod h1:4G1h5nDURzA3bwVMZI
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
 rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
-sigs.k8s.io/kustomize/api v0.3.3 h1:E3nUKiTnezsA1NoGA37jWlatjjMq2a/i1UIGAzSZGnk=
-sigs.k8s.io/kustomize/api v0.3.3/go.mod h1:JU8ooABgAO6xVDiWThwKtKShI8phhAALPaMfBpmNDOM=
 sigs.k8s.io/kustomize/api v0.4.1 h1:Lwco6Rsxd3TcubJzx9wAV2k7roh0M95FjrS29n76TRo=
 sigs.k8s.io/kustomize/api v0.4.1/go.mod h1:NqxqT+wbYHrD0P19Uu4dXiMsVwI1IwQs+MJHlLhmPqQ=
-sigs.k8s.io/kustomize/kyaml v0.1.10 h1:ZZfBnA/kYa9ZxUFIgI9oq3pWKzzA1gGOKgU0Hv/NhVg=
-sigs.k8s.io/kustomize/kyaml v0.1.10/go.mod h1:mPmeBSRy0LTMv6fSrYSoi2yIFNZVouGKDsTekE5kdhs=
 sigs.k8s.io/kustomize/kyaml v0.1.11 h1:/VvWxVIgH5gG1K4A7trgbyLgO3tRBiAWNhLFVU1HEmo=
 sigs.k8s.io/kustomize/kyaml v0.1.11/go.mod h1:72/rLkSi+L/pHM1oCjwrf3ClU+tH5kZQvvdLSqIHwWU=
 sigs.k8s.io/structured-merge-diff v0.0.0-20190525122527-15d366b2352e h1:4Z09Hglb792X0kfOBBJUPFEyvVfQWrYT/l8h5EKA6JQ=

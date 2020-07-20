@@ -8,9 +8,6 @@ import (
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/restmapper"
 
 	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
@@ -50,7 +47,7 @@ func simplifyJSON(full, targeted []byte) (simplified []byte, err error) {
 
 func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
 	client := m.(*Config).Client
-	clientset := m.(*Config).Clientset
+	cgvk := m.(*Config).CachedGroupVersionKind
 
 	n, err := parseJSON(modifiedJSON)
 	if err != nil {
@@ -61,7 +58,7 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 		return nil, nil, nil, err
 	}
 
-	gvr, err := getGVR(o.GroupVersionKind(), clientset)
+	gvr, err := cgvk.getGVR(o.GroupVersionKind(), false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -109,25 +106,6 @@ func getPatch(original []byte, modified []byte, current []byte) (patch []byte, e
 		return nil, fmt.Errorf("CreateThreeWayJSONMergePatch failed: %s", err)
 	}
 	return patch, nil
-}
-
-func getGVR(gvk k8sschema.GroupVersionKind, cs *kubernetes.Clientset) (gvr k8sschema.GroupVersionResource, err error) {
-	agr, err := restmapper.GetAPIGroupResources(cs.Discovery())
-	if err != nil {
-		return gvr, fmt.Errorf("discovering API group resources failed: %s", err)
-	}
-
-	rm := restmapper.NewDiscoveryRESTMapper(agr)
-
-	gk := k8sschema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
-	mapping, err := rm.RESTMapping(gk, gvk.Version)
-	if err != nil {
-		return gvr, fmt.Errorf("mapping GroupKind failed for '%s': %s", gvk, err)
-	}
-
-	gvr = mapping.Resource
-
-	return gvr, nil
 }
 
 func parseJSON(json string) (ur *k8sunstructured.Unstructured, err error) {
