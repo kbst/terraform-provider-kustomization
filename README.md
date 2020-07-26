@@ -62,6 +62,10 @@ To import existing Kubernetes resources into the Terraform state for above usage
 terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
 ```
 
+## Limitations
+- To get rid of the noises with various "server-side managed" changing fields such as `managedFields`, `creationTimestamp`, `resourceVersion`, `status` etc. for a kubernetes resource in the terraform plan diff, we use a data source "targeted" strategy when doing the plan diff, i.e., only fields present in your kustomization code are involved in producing the terraform plan diff against the actual kubenetes resource in cluster.
+- When doing an import, terraform is not aware of the kustomization data source. This is a known [limitation of terraform](https://www.terraform.io/docs/commands/import.html#provider-configuration). That way we have to import a minimal part of the resource into state (only identity of the resource). After importing, the first terraform apply could compare based on the targeted data source and therefore sync the state to the desired field values according to what you have in kustomization.
+
 ## Building and Developing the Provider
 
 To work on the provider, you need go installed on your machine (version 1.13.x tested). The provider uses go mod to manage its dependencies, so GOPATH is not required.
