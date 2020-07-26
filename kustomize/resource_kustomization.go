@@ -188,10 +188,8 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
-	simplifiedOriginal := getSimplified(u, []byte(modifiedJSON.(string)))
-
 	original, modified, current, err := getOriginalModifiedCurrent(
-		simplifiedOriginal,
+		originalJSON.(string),
 		modifiedJSON.(string),
 		true,
 		m)
@@ -291,10 +289,8 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
-	simplifiedOriginal := getSimplified(u, []byte(modifiedJSON.(string)))
-
 	original, modified, current, err := getOriginalModifiedCurrent(
-		simplifiedOriginal,
+		originalJSON.(string),
 		modifiedJSON.(string),
 		false,
 		m)
