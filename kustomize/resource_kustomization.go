@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -408,8 +409,16 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	srcJSON := d.Get("manifest").(string)
-	d.Set("manifest", getSimplified(resp, []byte(srcJSON)))
+	// Terraform import doesn't support using data source thus we can't make the "target-based" simplifyJSON here.
+	// https://www.terraform.io/docs/commands/import.html#provider-configuration
+	// Instead we only import a "minimal" manifest.
+	minimal := &unstructured.Unstructured{}
+	minimal.SetGroupVersionKind(resp.GroupVersionKind())
+	minimal.SetName(resp.GetName())
+	minimal.SetNamespace(resp.GetNamespace())
+
+	minimalJSON, _ := minimal.MarshalJSON()
+	d.Set("manifest", string(minimalJSON))
 
 	return []*schema.ResourceData{d}, nil
 }
