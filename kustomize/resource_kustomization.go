@@ -244,7 +244,9 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		return false, fmt.Errorf("ResourceExists: %s", err)
+		// If the Kind does not exist in the K8s API,
+		// the resource can't exist either
+		return false, nil
 	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
@@ -330,7 +332,9 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		return fmt.Errorf("ResourceDelete: %s", err)
+		// If the Kind does not exist in the K8s API,
+		// the resource can't exist either
+		return nil
 	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
