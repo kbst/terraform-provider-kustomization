@@ -4,11 +4,15 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+	"hash/crc32"
+	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
 	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
+	"sigs.k8s.io/kustomize/api/resid"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/types"
 )
@@ -40,6 +44,7 @@ func dataSourceKustomization() *schema.Resource {
 				Type:     schema.TypeSet,
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set:      idSetHash,
 			},
 			"manifests": &schema.Schema{
 				Type:     schema.TypeMap,
@@ -48,6 +53,47 @@ func dataSourceKustomization() *schema.Resource {
 			},
 		},
 	}
+}
+
+func idSetHash(v interface{}) int {
+	id := v.(string)
+
+	h := crc32.ChecksumIEEE([]byte(id))
+	f := int(h)
+
+	gvk := resid.GvkFromString(id)
+
+	// Default prefix to 5
+	var p uint32 = 5
+
+	for _, k := range []string{
+		"Namespace",
+		"CustomResourceDefinition",
+	} {
+		if strings.HasPrefix(gvk.Kind, k) {
+			p = 1
+		}
+	}
+
+	for _, k := range []string{
+		"MutatingWebhookConfiguration",
+		"ValidatingWebhookConfiguration",
+	} {
+		if strings.HasPrefix(gvk.Kind, k) {
+			p = 9
+		}
+	}
+
+	s := fmt.Sprintf("%01d%010d", p, h)
+
+	i, e := strconv.ParseInt(s, 10, 32)
+	if e != nil {
+		// return unmodified hash
+		return f
+	}
+	f = int(i)
+
+	return f
 }
 
 func runKustomizeBuild(path string) (rm resmap.ResMap, err error) {
