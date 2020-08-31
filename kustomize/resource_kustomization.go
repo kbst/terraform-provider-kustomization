@@ -35,6 +35,11 @@ func kustomizationResource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"skip_dry_run": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 		},
 	}
 }
@@ -202,32 +207,36 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return fmt.Errorf("ResourceDiff: %s", err)
 	}
 
-	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
+	skipDryRun := d.Get("skip_dry_run")
 
-	_, err = client.
-		Resource(gvr).
-		Namespace(namespace).
-		Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patch, dryRunPatch)
-	if err != nil {
-		//
-		//
-		// Find out if the request is invalid because a field is immutable
-		// if immutable is the only reason, force a delete and recreate plan
-		if k8serrors.IsInvalid(err) {
-			as := err.(k8serrors.APIStatus).Status()
+	if skipDryRun == false {
+		dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
 
-			for _, c := range as.Details.Causes {
-				if strings.HasSuffix(c.Message, ": field is immutable") != true {
-					// if there is any error that is not due to an immutable field
-					// expose to user to let them fix it first
-					return fmt.Errorf("ResourceDiff: %s", err)
+		_, err = client.
+			Resource(gvr).
+			Namespace(namespace).
+			Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patch, dryRunPatch)
+		if err != nil {
+			//
+			//
+			// Find out if the request is invalid because a field is immutable
+			// if immutable is the only reason, force a delete and recreate plan
+			if k8serrors.IsInvalid(err) {
+				as := err.(k8serrors.APIStatus).Status()
+
+				for _, c := range as.Details.Causes {
+					if strings.HasSuffix(c.Message, ": field is immutable") != true {
+						// if there is any error that is not due to an immutable field
+						// expose to user to let them fix it first
+						return fmt.Errorf("ResourceDiff: %s", err)
+					}
 				}
-			}
 
-			d.ForceNew("manifest")
-			return nil
+				d.ForceNew("manifest")
+				return nil
+			}
+			return fmt.Errorf("ResourceDiff: %s", err)
 		}
-		return fmt.Errorf("ResourceDiff: %s", err)
 	}
 
 	return nil
