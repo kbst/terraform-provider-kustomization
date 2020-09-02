@@ -190,6 +190,8 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	if err != nil {
 		return fmt.Errorf("ResourceDiff: %s", err)
 	}
+
+	kind := u.GetKind()
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -199,12 +201,12 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		true,
 		m)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
+		return fmt.Errorf("ResourceDiff: %s %s %s %s", kind, namespace, name, err)
 	}
 
 	patch, err := getPatch(original, modified, current)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
+		return fmt.Errorf("ResourceDiff: %s %s %s %s", kind, namespace, name, err)
 	}
 
 	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
@@ -237,7 +239,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 					if strings.HasSuffix(c.Message, ": field is immutable") != true {
 						// if there is any error that is not due to an immutable field
 						// expose to user to let them fix it first
-						return fmt.Errorf("ResourceDiff: %s", err)
+						return fmt.Errorf("ResourceDiff: %s %s %s %s", kind, namespace, name, err)
 					}
 				}
 
@@ -245,7 +247,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 				return nil
 			}
 
-			return fmt.Errorf("ResourceDiff: %s", err)
+			return fmt.Errorf("ResourceDiff: %s %s %s %s", kind, namespace, name, err)
 		}
 
 		// If StrategicMergePatchType succeeded without error stop the loop
