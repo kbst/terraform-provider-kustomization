@@ -1,0 +1,5 @@
+resources:
+- ../initial
+
+patches:
+- co-patch.yaml

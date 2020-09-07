@@ -260,7 +260,30 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 			// Applying both namespaced and cluster wide CRD
 			// and one custom object of each CRD
 			{
-				Config: testAccResourceKustomizationConfig_crd("../test_kustomizations/crd"),
+				Config: testAccResourceKustomizationConfig_crd("../test_kustomizations/crd/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.clusteredcrd",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.namespacedcrd",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.clusteredco",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.namespacedco",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.ns",
+						"id"),
+				),
+			},
+			//
+			//
+			// Modify each CO's spec with a patch
+			{
+				Config: testAccResourceKustomizationConfig_crd("../test_kustomizations/crd/modified"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(
 						"kustomization_resource.clusteredcrd",
