@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/kustomize/api/resid"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -57,7 +58,10 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			// CRDs: wait for GroupVersionKind to exist
 			gvr, err := cgvk.getGVR(u.GroupVersionKind(), true)
 			if err != nil {
-				return nil, "pending", nil
+				if k8smeta.IsNoMatchError(err) {
+					return nil, "pending", nil
+				}
+				return nil, "", err
 			}
 
 			return gvr, "existing", nil
@@ -244,9 +248,12 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		// If the Kind does not exist in the K8s API,
-		// the resource can't exist either
-		return false, nil
+		if k8smeta.IsNoMatchError(err) {
+			// If the Kind does not exist in the K8s API,
+			// the resource can't exist either
+			return false, nil
+		}
+		return false, err
 	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
@@ -332,9 +339,12 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		// If the Kind does not exist in the K8s API,
-		// the resource can't exist either
-		return nil
+		if k8smeta.IsNoMatchError(err) {
+			// If the Kind does not exist in the K8s API,
+			// the resource can't exist either
+			return nil
+		}
+		return err
 	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
