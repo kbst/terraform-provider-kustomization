@@ -170,7 +170,7 @@ func (c cachedGroupVersionKind) getGVR(gvk k8sschema.GroupVersionKind, refreshCa
 	if found == false || refreshCache == true {
 		agr, err = restmapper.GetAPIGroupResources(c.cs.Discovery())
 		if err != nil {
-			return gvr, fmt.Errorf("discovering API group resources failed: %s", err)
+			return gvr, err
 		}
 		c.cache.Set(APIGroupResourcesCacheKey, agr, cache.DefaultExpiration)
 	}
@@ -180,7 +180,7 @@ func (c cachedGroupVersionKind) getGVR(gvk k8sschema.GroupVersionKind, refreshCa
 	gk := k8sschema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}
 	mapping, err := rm.RESTMapping(gk, gvk.Version)
 	if err != nil {
-		return gvr, fmt.Errorf("mapping GroupKind failed for '%s': %s", gvk, err)
+		return gvr, err
 	}
 
 	gvr = mapping.Resource
