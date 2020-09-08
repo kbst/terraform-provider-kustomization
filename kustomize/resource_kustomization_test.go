@@ -341,6 +341,58 @@ resource "kustomization_resource" "ns" {
 
 //
 //
+// Webhook Test
+func TestAccResourceKustomization_webhook(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Creating initial webhook
+			{
+				Config: testAccResourceKustomizationConfig_webhook("../test_kustomizations/webhook/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.webhook",
+						"id"),
+				),
+			},
+			//
+			//
+			// Applying modified webhook
+			{
+				Config: testAccResourceKustomizationConfig_webhook("../test_kustomizations/webhook/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.webhook",
+						"id"),
+				),
+			},
+			//
+			//
+			// Test state import
+			{
+				ResourceName:      "kustomization_resource.test[\"admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com\"]",
+				ImportStateId:     "admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_webhook(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "webhook" {
+	manifest = data.kustomization.test.manifests["admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com"]
+}
+`
+}
+
+//
+//
 // Test check functions
 
 func testAccCheckDeploymentPurged(n string) resource.TestCheckFunc {
