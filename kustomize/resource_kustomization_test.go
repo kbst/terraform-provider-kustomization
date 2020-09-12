@@ -260,7 +260,30 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 			// Applying both namespaced and cluster wide CRD
 			// and one custom object of each CRD
 			{
-				Config: testAccResourceKustomizationConfig_crd("../test_kustomizations/crd"),
+				Config: testAccResourceKustomizationConfig_crd("../test_kustomizations/crd/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.clusteredcrd",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.namespacedcrd",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.clusteredco",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.namespacedco",
+						"id"),
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.ns",
+						"id"),
+				),
+			},
+			//
+			//
+			// Modify each CO's spec with a patch
+			{
+				Config: testAccResourceKustomizationConfig_crd("../test_kustomizations/crd/modified"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(
 						"kustomization_resource.clusteredcrd",
@@ -312,6 +335,58 @@ resource "kustomization_resource" "namespacedco" {
 
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization.test.manifests["~G_v1_Namespace|~X|test-crd"]
+}
+`
+}
+
+//
+//
+// Webhook Test
+func TestAccResourceKustomization_webhook(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Creating initial webhook
+			{
+				Config: testAccResourceKustomizationConfig_webhook("../test_kustomizations/webhook/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.webhook",
+						"id"),
+				),
+			},
+			//
+			//
+			// Applying modified webhook
+			{
+				Config: testAccResourceKustomizationConfig_webhook("../test_kustomizations/webhook/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(
+						"kustomization_resource.webhook",
+						"id"),
+				),
+			},
+			//
+			//
+			// Test state import
+			{
+				ResourceName:      "kustomization_resource.test[\"admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com\"]",
+				ImportStateId:     "admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_webhook(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "webhook" {
+	manifest = data.kustomization.test.manifests["admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com"]
 }
 `
 }

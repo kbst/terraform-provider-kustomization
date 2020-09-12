@@ -12,7 +12,9 @@ import (
 	"sigs.k8s.io/kustomize/api/resid"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
@@ -57,7 +59,10 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			// CRDs: wait for GroupVersionKind to exist
 			gvr, err := cgvk.getGVR(u.GroupVersionKind(), true)
 			if err != nil {
-				return nil, "pending", nil
+				if k8smeta.IsNoMatchError(err) {
+					return nil, "pending", nil
+				}
+				return nil, "", err
 			}
 
 			return gvr, "existing", nil
@@ -206,30 +211,47 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 
 	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
 
-	_, err = client.
-		Resource(gvr).
-		Namespace(namespace).
-		Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patch, dryRunPatch)
-	if err != nil {
-		//
-		//
-		// Find out if the request is invalid because a field is immutable
-		// if immutable is the only reason, force a delete and recreate plan
-		if k8serrors.IsInvalid(err) {
-			as := err.(k8serrors.APIStatus).Status()
+	patchTypes := []k8stypes.PatchType{
+		k8stypes.StrategicMergePatchType,
+		k8stypes.MergePatchType,
+	}
+	for _, patchType := range patchTypes {
+		_, err = client.
+			Resource(gvr).
+			Namespace(namespace).
+			Patch(context.TODO(), name, patchType, patch, dryRunPatch)
+		if err != nil {
 
-			for _, c := range as.Details.Causes {
-				if strings.HasSuffix(c.Message, ": field is immutable") != true {
-					// if there is any error that is not due to an immutable field
-					// expose to user to let them fix it first
-					return fmt.Errorf("ResourceDiff: %s %s %s %s", kind, namespace, name, err)
-				}
+			//
+			// If the resource kind does not support StrategicMergePatchType
+			// fall back to MergePatchType and retry
+			if k8serrors.IsUnsupportedMediaType(err) {
+				continue
 			}
 
-			d.ForceNew("manifest")
-			return nil
+			//
+			// Find out if the request is invalid because a field is immutable
+			// if immutable is the only reason, force a delete and recreate plan
+			if k8serrors.IsInvalid(err) {
+				as := err.(k8serrors.APIStatus).Status()
+
+				for _, c := range as.Details.Causes {
+					if strings.HasSuffix(c.Message, ": field is immutable") != true {
+						// if there is any error that is not due to an immutable field
+						// expose to user to let them fix it first
+						return fmt.Errorf("ResourceDiff: %s", err)
+					}
+				}
+
+				d.ForceNew("manifest")
+				return nil
+			}
+
+			return fmt.Errorf("ResourceDiff: %s", err)
 		}
-		return fmt.Errorf("ResourceDiff: %s %s %s %s", kind, namespace, name, err)
+
+		// If StrategicMergePatchType succeeded without error stop the loop
+		break
 	}
 
 	return nil
@@ -246,9 +268,12 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		// If the Kind does not exist in the K8s API,
-		// the resource can't exist either
-		return false, nil
+		if k8smeta.IsNoMatchError(err) {
+			// If the Kind does not exist in the K8s API,
+			// the resource can't exist either
+			return false, nil
+		}
+		return false, err
 	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
@@ -307,12 +332,29 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("ResourceUpdate: %s", err)
 	}
 
-	patchResp, err := client.
-		Resource(gvr).
-		Namespace(namespace).
-		Patch(context.TODO(), name, k8stypes.StrategicMergePatchType, patch, k8smetav1.PatchOptions{})
-	if err != nil {
-		return fmt.Errorf("ResourceUpdate: patching '%s' failed: %s", gvr, err)
+	var patchResp *unstructured.Unstructured
+	patchTypes := []k8stypes.PatchType{
+		k8stypes.StrategicMergePatchType,
+		k8stypes.MergePatchType,
+	}
+	for _, patchType := range patchTypes {
+		patchResp, err = client.
+			Resource(gvr).
+			Namespace(namespace).
+			Patch(context.TODO(), name, patchType, patch, k8smetav1.PatchOptions{})
+		if err != nil {
+			//
+			// If the resource kind does not support StrategicMergePatchType
+			// fall back to MergePatchType and retry
+			if k8serrors.IsUnsupportedMediaType(err) {
+				continue
+			}
+
+			return fmt.Errorf("ResourceUpdate: patching '%s' failed: %s", gvr, err)
+		}
+
+		// If StrategicMergePatchType succeeded without error stop the loop
+		break
 	}
 
 	id := string(patchResp.GetUID())
@@ -334,9 +376,12 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		// If the Kind does not exist in the K8s API,
-		// the resource can't exist either
-		return nil
+		if k8smeta.IsNoMatchError(err) {
+			// If the Kind does not exist in the K8s API,
+			// the resource can't exist either
+			return nil
+		}
+		return err
 	}
 	namespace := u.GetNamespace()
 	name := u.GetName()
