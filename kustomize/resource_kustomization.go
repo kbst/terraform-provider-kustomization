@@ -48,7 +48,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceCreate: %s", err)
+		return fmt.Errorf("ResourceCreate: JSON parse error: '%s' %s", srcJSON, err)
 	}
 
 	stateConf := &resource.StateChangeConf{
@@ -77,7 +77,9 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	gvr := gvrResp.(k8sschema.GroupVersionResource)
+
 	namespace := u.GetNamespace()
+	name := u.GetName()
 
 	setLastAppliedConfig(u, srcJSON)
 
@@ -89,7 +91,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			Kind:    "Namespace"}
 		nsGvr, err := cgvk.getGVR(nsGvk, false)
 		if err != nil {
-			return fmt.Errorf("ResourceCreate: %s", err)
+			return fmt.Errorf("ResourceCreate: '%s' %s/%s %s", gvr, namespace, name, err)
 		}
 
 		stateConf := &resource.StateChangeConf{
@@ -124,7 +126,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		Namespace(namespace).
 		Create(context.TODO(), u, k8smetav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("ResourceCreate: creating '%s' failed: %s", gvr, err)
+		return fmt.Errorf("ResourceCreate: creating '%s' failed: %s/%s %s", gvr, namespace, name, err)
 	}
 
 	id := string(resp.GetUID())
@@ -139,15 +141,17 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	cgvk := m.(*Config).CachedGroupVersionKind
 
-	u, err := parseJSON(d.Get("manifest").(string))
+	srcJSON := d.Get("manifest").(string)
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceRead: %s", err)
+		return fmt.Errorf("ResourceRead: JSON parse error: '%s' %s", srcJSON, err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
 		return fmt.Errorf("ResourceRead: %s", err)
 	}
+
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -156,7 +160,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 		Namespace(namespace).
 		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("ResourceRead: reading '%s' failed: %s", gvr, err)
+		return fmt.Errorf("ResourceRead: reading '%s' failed: %s/%s %s", gvr, namespace, name, err)
 	}
 
 	id := string(resp.GetUID())
@@ -177,13 +181,14 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return nil
 	}
 
-	if originalJSON.(string) == "" {
+	srcJSON := originalJSON.(string)
+	if srcJSON == "" {
 		return nil
 	}
 
-	u, err := parseJSON(originalJSON.(string))
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
+		return fmt.Errorf("ResourceDiff: JSON parse error: '%s' %s", srcJSON, err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -191,7 +196,6 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return fmt.Errorf("ResourceDiff: %s", err)
 	}
 
-	kind := u.GetKind()
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -201,12 +205,12 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		true,
 		m)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s %s %s %s", kind, namespace, name, err)
+		return fmt.Errorf("ResourceDiff: '%s' %s/%s %s", gvr, namespace, name, err)
 	}
 
 	patch, err := getPatch(original, modified, current)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s %s %s %s", kind, namespace, name, err)
+		return fmt.Errorf("ResourceDiff: '%s' %s/%s %s", gvr, namespace, name, err)
 	}
 
 	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
@@ -239,7 +243,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 					if strings.HasSuffix(c.Message, ": field is immutable") != true {
 						// if there is any error that is not due to an immutable field
 						// expose to user to let them fix it first
-						return fmt.Errorf("ResourceDiff: %s", err)
+						return fmt.Errorf("ResourceDiff: '%s' %s/%s %s", gvr, namespace, name, err)
 					}
 				}
 
@@ -247,7 +251,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 				return nil
 			}
 
-			return fmt.Errorf("ResourceDiff: %s", err)
+			return fmt.Errorf("ResourceDiff: '%s' %s/%s %s", gvr, namespace, name, err)
 		}
 
 		// If StrategicMergePatchType succeeded without error stop the loop
@@ -261,9 +265,10 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 	client := m.(*Config).Client
 	cgvk := m.(*Config).CachedGroupVersionKind
 
-	u, err := parseJSON(d.Get("manifest").(string))
+	srcJSON := d.Get("manifest").(string)
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return false, fmt.Errorf("ResourceExists: %s", err)
+		return false, fmt.Errorf("ResourceExists: JSON parse error: '%s' %s", srcJSON, err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -306,15 +311,17 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		return errors.New(msg)
 	}
 
-	u, err := parseJSON(originalJSON.(string))
+	srcJSON := originalJSON.(string)
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
+		return fmt.Errorf("ResourceUpdate: JSON parse error: '%s' %s", srcJSON, err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
 		return fmt.Errorf("ResourceUpdate: %s", err)
 	}
+
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -324,12 +331,12 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		false,
 		m)
 	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
+		return fmt.Errorf("ResourceUpdate: '%s' %s/%s %s", gvr, namespace, name, err)
 	}
 
 	patch, err := getPatch(original, modified, current)
 	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
+		return fmt.Errorf("ResourceUpdate: '%s' %s/%s %s", gvr, namespace, name, err)
 	}
 
 	var patchResp *unstructured.Unstructured
@@ -350,7 +357,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 				continue
 			}
 
-			return fmt.Errorf("ResourceUpdate: patching '%s' failed: %s", gvr, err)
+			return fmt.Errorf("ResourceUpdate: patching '%s' failed: %s/%s %s", gvr, namespace, name, err)
 		}
 
 		// If StrategicMergePatchType succeeded without error stop the loop
@@ -369,9 +376,10 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	cgvk := m.(*Config).CachedGroupVersionKind
 
-	u, err := parseJSON(d.Get("manifest").(string))
+	srcJSON := d.Get("manifest").(string)
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceDelete: %s", err)
+		return fmt.Errorf("ResourceDelete: JSON parse error: '%s' %s", srcJSON, err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -383,6 +391,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 		}
 		return err
 	}
+
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -397,7 +406,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 			return nil
 		}
 
-		return fmt.Errorf("ResourceDelete: deleting '%s' failed: %s", gvr, err)
+		return fmt.Errorf("ResourceDelete: deleting '%s' failed: %s/%s %s", gvr, namespace, name, err)
 	}
 
 	stateConf := &resource.StateChangeConf{
@@ -413,7 +422,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 				if k8serrors.IsNotFound(err) {
 					return nil, "", nil
 				}
-				return nil, "", fmt.Errorf("refreshing '%s' state failed: %s", gvr, err)
+				return nil, "", fmt.Errorf("refreshing '%s' state failed: %s/%s %s", gvr, namespace, name, err)
 			}
 
 			return resp, "deleting", nil
@@ -421,7 +430,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	}
 	_, err = stateConf.WaitForState()
 	if err != nil {
-		return fmt.Errorf("ResourceDelete: %s", err)
+		return fmt.Errorf("ResourceDelete: '%s' %s/%s %s", gvr, namespace, name, err)
 	}
 
 	d.SetId("")
