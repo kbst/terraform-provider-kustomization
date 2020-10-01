@@ -4,9 +4,9 @@
 
 This provider aims to solve 3 common issues of applying a kustomization using kubectl by integrating Kustomize and Terraform.
 
- 1. Lack of feedback what changes will be applied.
- 1. Resources from a previous apply not in the current apply are not purged.
- 1. Immutable changes like e.g. changing a deployment's selector cause the apply to fail mid way.
+1. Lack of feedback what changes will be applied.
+1. Resources from a previous apply not in the current apply are not purged.
+1. Immutable changes like e.g. changing a deployment's selector cause the apply to fail mid way.
 
 To solve this the provider uses the Terraform state to show changes to each resource individually during plan as well as track resources in need of purging.
 
@@ -16,8 +16,8 @@ As such it can be useful both to replace kustomize/kubectl integrated into a Ter
 
 ## Requirements
 
--	[Terraform](https://www.terraform.io/downloads.html) 0.12.x
--	[Go](https://golang.org/doc/install) 1.13 (to build the provider plugin)
+- [Terraform](https://www.terraform.io/downloads.html) 0.12.x
+- [Go](https://golang.org/doc/install) 1.13 (to build the provider plugin)
 
 ## Usage
 
@@ -66,14 +66,14 @@ terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|tes
 
 To work on the provider, you need go installed on your machine (version 1.13.x tested). The provider uses go mod to manage its dependencies, so GOPATH is not required.
 
-To compile the provider, run `go build` as shown below. This will build the provider and put the provider binary in the `terraform.d/plugins/linux_amd64/` directory. The provider has not been tested yet on other platforms.
+To compile the provider, run `make build` as shown below. This will build the provider and put the provider binary in the `terraform.d/plugins/linux_amd64/` directory.
 
 ```sh
-$ go build -o terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+$ make build
 ```
 
-In order to test the provider, you can simply run the acceptance tests using `go test`. You can set the `KUBECONFIG` environment variable to point the tests to a specific cluster or set the context of your current config accordingly. The tests create namespaces on the current context. [Kind](https://github.com/kubernetes-sigs/kind) or [Minikube](https://github.com/kubernetes/minikube) clusters work well for testing.
+In order to test the provider, you can simply run the acceptance tests using `make test`. You can set the `KUBECONFIG` environment variable to point the tests to a specific cluster or set the context of your current config accordingly. The tests create namespaces on the current context. [Kind](https://github.com/kubernetes-sigs/kind) or [Minikube](https://github.com/kubernetes/minikube) clusters work well for testing.
 
 ```sh
-$ TF_ACC=1 go test -v ./kustomize
+$ make test
 ```
