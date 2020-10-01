@@ -2,6 +2,10 @@ name: Run Tests
 
 on: push
 
+env:
+  GO_VERSION: ">=1.15"
+  TERRAFORM_VERSION: "0.12.29"
+
 jobs:
   tf_acc_tests:
     runs-on: ubuntu-latest
@@ -15,10 +19,10 @@ jobs:
       with:
         version: "v0.6.1"
 
-    - name: 'Setup Go'
-      uses: actions/setup-go@v1
+    - name: Set up Go
+      uses: actions/setup-go@v2
       with:
-        go-version: "1.13.5"
+        go-version: "${{ env.GO_VERSION }}"
 
     - name: 'Run TF acceptance tests'
       run: |
@@ -34,62 +38,56 @@ jobs:
     - name: 'Checkout'
       uses: actions/checkout@v1
 
-    - name: 'Setup Go'
-      uses: actions/setup-go@v1
+    - name: Set up Go
+      uses: actions/setup-go@v2
       with:
-        go-version: "1.13.5"
+        go-version: "${{ env.GO_VERSION }}"
 
-    - name: 'Compile provider'
-      run: |
-        go build -o terraform.d/plugins/linux_amd64/terraform-provider-kustomization
-        ls -al
-        pwd
-
-    - name: 'Upload provider binary'
-      uses: actions/upload-artifact@v1
+    - name: Run goreleaser build
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: kbst/goreleaser-action@v2
       with:
-        name: terraform.d
-        path: terraform.d
+        version: latest
+        args: build --config .goreleaser-build.yml --rm-dist
 
-  download_terraform:
-    runs-on: ubuntu-latest
-
-    steps:
-
-    - name: 'Download Terraform'
-      run: |
-        wget https://releases.hashicorp.com/terraform/0.12.20/terraform_0.12.20_linux_amd64.zip
-        unzip terraform_0.12.20_linux_amd64.zip
-        ./terraform version
-
-    - name: 'Upload terraform binary'
-      uses: actions/upload-artifact@v1
+    - name: Run goreleaser build --snapshot
+      if: startsWith(github.ref, 'refs/tags/v') == false
+      uses: kbst/goreleaser-action@v2
       with:
-        name: terraform
-        path: terraform
+        version: latest
+        args: build --config .goreleaser-build.yml --rm-dist --snapshot
+
+    - name: 'Upload dist'
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/
 
   int_test_kubeconfig_path:
     runs-on: ubuntu-latest
-    needs: [compile_provider, download_terraform]
+    needs: [compile_provider]
 
     steps:
     - name: 'Checkout'
       uses: actions/checkout@v1
 
-    - name: 'Download terraform binary'
-      uses: actions/download-artifact@v1
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1.2.0
       with:
-        name: terraform
+        terraform_wrapper: false
+        terraform_version: "${{ env.TERRAFORM_VERSION }}"
 
     - name: 'Download provider binary'
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v2
       with:
-        name: terraform.d
+        name: dist
+        path: dist
 
-    - name: 'Make binaries executable'
+    - name: 'Prepare provider binary'
       run: |
-        chmod +x ./terraform/terraform
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        mkdir -p ./terraform.d/plugins/linux_amd64/
+        cp ./dist/terraform-provider-kustomization_linux_amd64/terraform-provider-kustomization_* ./terraform.d/plugins/linux_amd64/
+        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization_*
 
     - name: 'Setup Kind'
       uses: engineerd/setup-kind@v0.1.0
@@ -101,14 +99,14 @@ jobs:
         export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
 
     - name: 'Terraform Init'
-      run: ./terraform/terraform init
+      run: terraform init
 
     - name: 'Terraform Apply'
-      run: ./terraform/terraform apply --auto-approve
+      run: terraform apply --auto-approve
 
   int_test_kubeconfig_raw:
     runs-on: ubuntu-latest
-    needs: [compile_provider, download_terraform]
+    needs: [compile_provider]
 
     steps:
     - name: 'Checkout'
@@ -119,20 +117,23 @@ jobs:
       with:
         version: "v0.6.1"
 
-    - name: 'Download terraform binary'
-      uses: actions/download-artifact@v1
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1.2.0
       with:
-        name: terraform
+        terraform_wrapper: false
+        terraform_version: "${{ env.TERRAFORM_VERSION }}"
 
     - name: 'Download provider binary'
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v2
       with:
-        name: terraform.d
+        name: dist
+        path: dist
 
-    - name: 'Make binaries executable'
+    - name: 'Prepare provider binary'
       run: |
-        chmod +x ./terraform/terraform
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        mkdir -p ./terraform.d/plugins/linux_amd64/
+        cp ./dist/terraform-provider-kustomization_linux_amd64/terraform-provider-kustomization_* ./terraform.d/plugins/linux_amd64/
+        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization_*
 
     - name: 'Create provider.tf with kubeconfig_raw'
       run: |
@@ -144,14 +145,14 @@ jobs:
         echo "}" >> provider.tf
 
     - name: 'Terraform Init'
-      run: ./terraform/terraform init
+      run: terraform init
 
     - name: 'Terraform Apply'
-      run: ./terraform/terraform apply --auto-approve
+      run: terraform apply --auto-approve
 
   int_test_state_import:
     runs-on: ubuntu-latest
-    needs: [compile_provider, download_terraform]
+    needs: [compile_provider]
 
     steps:
     - name: 'Checkout'
@@ -162,20 +163,23 @@ jobs:
       with:
         version: "v0.6.1"
 
-    - name: 'Download terraform binary'
-      uses: actions/download-artifact@v1
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1.2.0
       with:
-        name: terraform
+        terraform_wrapper: false
+        terraform_version: "${{ env.TERRAFORM_VERSION }}"
 
     - name: 'Download provider binary'
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v2
       with:
-        name: terraform.d
+        name: dist
+        path: dist
 
-    - name: 'Make binaries executable'
+    - name: 'Prepare provider binary'
       run: |
-        chmod +x ./terraform/terraform
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        mkdir -p ./terraform.d/plugins/linux_amd64/
+        cp ./dist/terraform-provider-kustomization_linux_amd64/terraform-provider-kustomization_* ./terraform.d/plugins/linux_amd64/
+        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization_*
 
     - name: 'Set KUBECONFIG env var'
       run: |
@@ -192,14 +196,43 @@ jobs:
         kustomize build test_kustomizations/basic/initial | kubectl apply -f -
 
     - name: 'Terraform Init'
-      run: ./terraform/terraform init
+      run: terraform init
 
     - name: 'Terraform Import'
       run: |
-        ./terraform/terraform import 'kustomization_resource.test["~G_v1_Namespace|~X|test-basic"]' '~G_v1_Namespace|~X|test-basic'
-        ./terraform/terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
-        ./terraform/terraform import 'kustomization_resource.test["~G_v1_Service|test-basic|test"]' '~G_v1_Service|test-basic|test'
-        ./terraform/terraform import 'kustomization_resource.test["networking.k8s.io_v1beta1_Ingress|test-basic|test"]' 'networking.k8s.io_v1beta1_Ingress|test-basic|test'
+        terraform import 'kustomization_resource.test["~G_v1_Namespace|~X|test-basic"]' '~G_v1_Namespace|~X|test-basic'
+        terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
+        terraform import 'kustomization_resource.test["~G_v1_Service|test-basic|test"]' '~G_v1_Service|test-basic|test'
+        terraform import 'kustomization_resource.test["networking.k8s.io_v1beta1_Ingress|test-basic|test"]' 'networking.k8s.io_v1beta1_Ingress|test-basic|test'
 
     - name: 'Terraform Apply'
-      run: ./terraform/terraform apply --auto-approve
+      run: terraform apply --auto-approve
+
+  goreleaser:
+    runs-on: ubuntu-latest
+    needs: [tf_acc_tests, int_test_kubeconfig_path, int_test_kubeconfig_raw, int_test_state_import]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+
+      - name: Import GPG key
+        id: import_gpg
+        uses: kbst/ghaction-import-gpg@v3
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Run goreleaser release
+        uses: kbst/goreleaser-action@v2
+        with:
+          version: latest
+          args: release
+        env:
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
