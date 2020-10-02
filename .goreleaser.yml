@@ -26,7 +26,10 @@ builds:
   binary: '{{ .ProjectName }}_v{{ .Version }}'
 archives:
 - format: zip
-  name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+  # artifact need to match the repository name,
+  # while the binary name needs to match the provider name
+  # this is due to an unfortunate mistake I made when I named the provider
+  name_template: 'terraform-provider-kustomize_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
 checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
   algorithm: sha256
