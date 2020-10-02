@@ -1,4 +1,3 @@
-project_name: terraform-provider-kustomization
 before:
   hooks:
     - go mod tidy
@@ -23,13 +22,13 @@ builds:
   ignore:
     - goos: darwin
       goarch: '386'
-  binary: '{{ .ProjectName }}_v{{ .Version }}'
+  binary: 'terraform-provider-kustomization_v{{ .Version }}'
 archives:
 - format: zip
   # artifact need to match the repository name,
   # while the binary name needs to match the provider name
   # this is due to an unfortunate mistake I made when I named the provider
-  name_template: 'terraform-provider-kustomize_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+  name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
 checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
   algorithm: sha256
