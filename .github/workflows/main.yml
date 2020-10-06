@@ -86,8 +86,8 @@ jobs:
     - name: 'Prepare provider binary'
       run: |
         mkdir -p ./terraform.d/plugins/linux_amd64/
-        cp ./dist/terraform-provider-kustomization_linux_amd64/terraform-provider-kustomization_* ./terraform.d/plugins/linux_amd64/
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization_*
+        cp ./dist/terraform-provider-kustomize_linux_amd64/terraform-provider-kustomize_* ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
 
     - name: 'Setup Kind'
       uses: engineerd/setup-kind@v0.1.0
@@ -132,8 +132,8 @@ jobs:
     - name: 'Prepare provider binary'
       run: |
         mkdir -p ./terraform.d/plugins/linux_amd64/
-        cp ./dist/terraform-provider-kustomization_linux_amd64/terraform-provider-kustomization_* ./terraform.d/plugins/linux_amd64/
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization_*
+        cp ./dist/terraform-provider-kustomize_linux_amd64/terraform-provider-kustomize_* ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
 
     - name: 'Create provider.tf with kubeconfig_raw'
       run: |
@@ -178,8 +178,8 @@ jobs:
     - name: 'Prepare provider binary'
       run: |
         mkdir -p ./terraform.d/plugins/linux_amd64/
-        cp ./dist/terraform-provider-kustomization_linux_amd64/terraform-provider-kustomization_* ./terraform.d/plugins/linux_amd64/
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization_*
+        cp ./dist/terraform-provider-kustomize_linux_amd64/terraform-provider-kustomize_* ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
 
     - name: 'Set KUBECONFIG env var'
       run: |

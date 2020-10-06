@@ -22,7 +22,7 @@ builds:
   ignore:
     - goos: darwin
       goarch: '386'
-  binary: 'terraform-provider-kustomization_v{{ .Version }}'
+  binary: '{{ .ProjectName }}_v{{ .Version }}'
 archives:
 - format: zip
   # artifact need to match the repository name,
