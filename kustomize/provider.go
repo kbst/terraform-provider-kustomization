@@ -35,7 +35,11 @@ func Provider() *schema.Provider {
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
+			// legacy name of the data source
 			"kustomization": dataSourceKustomization(),
+
+			// new name for the data source
+			"kustomization_build": dataSourceKustomization(),
 		},
 
 		Schema: map[string]*schema.Schema{

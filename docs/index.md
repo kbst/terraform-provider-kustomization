@@ -14,14 +14,12 @@ As such it can be useful both to replace kustomize/kubectl integrated into a Ter
 
 ## Example Usage
 
-!> Please note the difference between the local provider name `kustomization` and the registry source `source = "kbst/kustomize"`. This unconventional naming requires specifying the provider attribute for every resource. To resolve this, this will be the last release of this provider as `kbst/kustomize` all future versions will be released as `kbst/kustomization`.
-
 ```hcl
 terraform {
   required_providers {
     kustomization = {
-      source  = "kbst/kustomize"
-      version = "v0.2.0-beta.3"
+      source  = "kbst/kustomization"
+      version = ">= 0.2"
     }
   }
   required_version = ">= 0.12"
@@ -39,7 +37,9 @@ provider "kustomization" {}
 
 ## Imports
 
-To import existing Kubernetes resources into the Terraform state for above usage example, use a command like below and replace `apps_v1_Deployment|test-basic|test` accordingly. Please note the single quotes required for most shells.
+To import existing Kubernetes resources into the Terraform state, use a command like below and replace `apps_v1_Deployment|test-basic|test` accordingly.
+
+-> Please note the single quotes required for most shells.
 
 ```
 terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
