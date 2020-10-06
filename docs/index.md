@@ -14,17 +14,20 @@ As such it can be useful both to replace kustomize/kubectl integrated into a Ter
 
 ## Example Usage
 
+!> Please note the difference between the local provider name `kustomization` and the registry source `source = "kbst/kustomize"`. This unconventional naming requires specifying the provider attribute for every resource. To resolve this, this will be the last release of this provider as `kbst/kustomize` all future versions will be released as `kbst/kustomization`.
+
 ```hcl
-data "kustomization" "example" {
-  # path to kustomization directory
-  path = "test_kustomizations/basic/initial"
+terraform {
+  required_providers {
+    kustomization = {
+      source  = "kbst/kustomize"
+      version = "v0.2.0-beta.3"
+    }
+  }
+  required_version = ">= 0.12"
 }
 
-resource "kustomization_resource" "example" {
-  for_each = data.kustomization.example.ids
-
-  manifest = data.kustomization.example.manifests[each.value]
-}
+provider "kustomization" {}
 
 ```
 
