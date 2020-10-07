@@ -16,6 +16,34 @@ func TestAccDataSourceKustomization_basic(t *testing.T) {
 			{
 				Config: testAccDataSourceKustomizationConfig_basic("../test_kustomizations/basic/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("data.kustomization_build.test", "id"),
+					resource.TestCheckResourceAttrSet("data.kustomization_build.test", "path"),
+					resource.TestCheckResourceAttr("data.kustomization_build.test", "path", "../test_kustomizations/basic/initial"),
+					resource.TestCheckResourceAttr("data.kustomization_build.test", "ids.#", "4"),
+					resource.TestCheckResourceAttr("data.kustomization_build.test", "manifests.%", "4"),
+				),
+			},
+		},
+	})
+}
+
+func testAccDataSourceKustomizationConfig_basic(path string) string {
+	return fmt.Sprintf(`
+data "kustomization_build" "test" {
+	path = "%s"
+}
+`, path)
+}
+
+func TestAccDataSourceKustomization_legacyName(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDataSourceKustomizationConfig_legacyName("../test_kustomizations/basic/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.kustomization.test", "id"),
 					resource.TestCheckResourceAttrSet("data.kustomization.test", "path"),
 					resource.TestCheckResourceAttr("data.kustomization.test", "path", "../test_kustomizations/basic/initial"),
@@ -27,7 +55,7 @@ func TestAccDataSourceKustomization_basic(t *testing.T) {
 	})
 }
 
-func testAccDataSourceKustomizationConfig_basic(path string) string {
+func testAccDataSourceKustomizationConfig_legacyName(path string) string {
 	return fmt.Sprintf(`
 data "kustomization" "test" {
 	path = "%s"

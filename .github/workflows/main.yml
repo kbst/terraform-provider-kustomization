@@ -4,7 +4,7 @@ on: push
 
 env:
   GO_VERSION: ">=1.15"
-  TERRAFORM_VERSION: "0.12.29"
+  TERRAFORM_VERSION: "0.13.4"
 
 jobs:
   tf_acc_tests:
@@ -57,11 +57,16 @@ jobs:
         version: latest
         args: build --config .goreleaser-build.yml --rm-dist --snapshot
 
-    - name: 'Upload dist'
+    - name: 'Prepare terraform-plugins'
+      run: |
+        mkdir -p ./dist/.terraform/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64
+        cp ./dist/terraform-provider-kustomization_linux_amd64/terraform-provider-kustomization_v* ./dist/.terraform/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64/terraform-provider-kustomization_v1.0.0
+
+    - name: 'Upload terraform-plugins'
       uses: actions/upload-artifact@v2
       with:
-        name: dist
-        path: dist/
+        name: terraform-plugins
+        path: dist/.terraform/plugins
 
   int_test_kubeconfig_path:
     runs-on: ubuntu-latest
@@ -77,17 +82,14 @@ jobs:
         terraform_wrapper: false
         terraform_version: "${{ env.TERRAFORM_VERSION }}"
 
-    - name: 'Download provider binary'
+    - name: 'Download terraform-plugins'
       uses: actions/download-artifact@v2
       with:
-        name: dist
-        path: dist
+        name: terraform-plugins
+        path: .terraform/plugins
 
-    - name: 'Prepare provider binary'
-      run: |
-        mkdir -p ./terraform.d/plugins/linux_amd64/
-        cp ./dist/terraform-provider-kustomize_linux_amd64/terraform-provider-kustomize_* ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+    - name: 'Ensure provider is executable'
+      run: chmod +x .terraform/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64/terraform-provider-kustomization_v1.0.0
 
     - name: 'Setup Kind'
       uses: engineerd/setup-kind@v0.1.0
@@ -123,17 +125,14 @@ jobs:
         terraform_wrapper: false
         terraform_version: "${{ env.TERRAFORM_VERSION }}"
 
-    - name: 'Download provider binary'
+    - name: 'Download terraform-plugins'
       uses: actions/download-artifact@v2
       with:
-        name: dist
-        path: dist
+        name: terraform-plugins
+        path: .terraform/plugins
 
-    - name: 'Prepare provider binary'
-      run: |
-        mkdir -p ./terraform.d/plugins/linux_amd64/
-        cp ./dist/terraform-provider-kustomize_linux_amd64/terraform-provider-kustomize_* ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+    - name: 'Ensure provider is executable'
+      run: chmod +x .terraform/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64/terraform-provider-kustomization_v1.0.0
 
     - name: 'Create provider.tf with kubeconfig_raw'
       run: |
@@ -169,17 +168,14 @@ jobs:
         terraform_wrapper: false
         terraform_version: "${{ env.TERRAFORM_VERSION }}"
 
-    - name: 'Download provider binary'
+    - name: 'Download terraform-plugins'
       uses: actions/download-artifact@v2
       with:
-        name: dist
-        path: dist
+        name: terraform-plugins
+        path: .terraform/plugins
 
-    - name: 'Prepare provider binary'
-      run: |
-        mkdir -p ./terraform.d/plugins/linux_amd64/
-        cp ./dist/terraform-provider-kustomize_linux_amd64/terraform-provider-kustomize_* ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
-        chmod +x ./terraform.d/plugins/linux_amd64/terraform-provider-kustomization
+    - name: 'Ensure provider is executable'
+      run: chmod +x .terraform/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64/terraform-provider-kustomization_v1.0.0
 
     - name: 'Set KUBECONFIG env var'
       run: |
