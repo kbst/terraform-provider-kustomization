@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resid"
 	"sigs.k8s.io/kustomize/api/resmap"
-	"sigs.k8s.io/kustomize/api/types"
 )
 
 func getIDFromResources(rm resmap.ResMap) (s string, err error) {
@@ -98,11 +97,7 @@ func idSetHash(v interface{}) int {
 
 func runKustomizeBuild(path string) (rm resmap.ResMap, err error) {
 	fSys := filesys.MakeFsOnDisk()
-	opts := &krusty.Options{
-		DoLegacyResourceSort: true,
-		LoadRestrictions:     types.LoadRestrictionsRootOnly,
-		DoPrune:              false,
-	}
+	opts := krusty.MakeDefaultOptions()
 
 	k := krusty.MakeKustomizer(fSys, opts)
 
