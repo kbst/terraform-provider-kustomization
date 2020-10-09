@@ -393,6 +393,60 @@ resource "kustomization_resource" "webhook" {
 
 //
 //
+// TransformerConfigs test
+func TestAccResourceKustomization_transformerConfigs(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial config without the test label
+			{
+				Config: testAccResourceKustomizationConfig_transformerConfigs("../test_kustomizations/transformer_configs/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.dep1", "id"),
+					testAccCheckManifestLabelAbsent("kustomization_resource.dep1", "test.example.com/test-label"),
+					testAccCheckManifestSelectorAbsent("kustomization_resource.dep1", "test.example.com/test-label"),
+				),
+			},
+			//
+			//
+			// Applying modified config adding the test label
+			{
+				Config: testAccResourceKustomizationConfig_transformerConfigs("../test_kustomizations/transformer_configs/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.dep1", "id"),
+					testAccCheckManifestLabel("kustomization_resource.dep1", "test.example.com/test-label", "test-value"),
+					testAccCheckManifestSelectorAbsent("kustomization_resource.dep1", "test.example.com/test-label"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_transformerConfigs(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_Namespace|~X|test-transformer-config"]
+}
+
+resource "kustomization_resource" "svc" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_Service|test-transformer-config|test"]
+}
+
+resource "kustomization_resource" "dep1" {
+	manifest = data.kustomization_build.test.manifests["apps_v1_Deployment|test-transformer-config|test"]
+}
+`
+}
+
+//
+//
 // Test check functions
 
 func testAccCheckDeploymentPurged(n string) resource.TestCheckFunc {
@@ -502,6 +556,54 @@ func testAccCheckManifestAnnotationAbsent(n string, k string) resource.TestCheck
 		_, ok := annotations[k]
 		if ok {
 			return fmt.Errorf("Unexpected annotation exists: %s", k)
+		}
+
+		return nil
+	}
+}
+
+func testAccCheckManifestLabel(n string, k string, v string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		u, err := getResourceFromTestState(s, n)
+		if err != nil {
+			return err
+		}
+
+		resp, err := getResourceFromK8sAPI(u)
+		if err != nil {
+			return err
+		}
+
+		labels := resp.GetLabels()
+		a, ok := labels[k]
+		if !ok {
+			return fmt.Errorf("Label missing: %s", k)
+		}
+
+		if a != v {
+			return fmt.Errorf("Label value incorrect: expected %s, got %s", v, a)
+		}
+
+		return nil
+	}
+}
+
+func testAccCheckManifestLabelAbsent(n string, k string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		u, err := getResourceFromTestState(s, n)
+		if err != nil {
+			return err
+		}
+
+		resp, err := getResourceFromK8sAPI(u)
+		if err != nil {
+			return err
+		}
+
+		labels := resp.GetLabels()
+		_, ok := labels[k]
+		if ok {
+			return fmt.Errorf("Unexpected label exists: %s", k)
 		}
 
 		return nil
