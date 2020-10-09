@@ -1,0 +1,9 @@
+apiVersion: builtin
+kind: LabelTransformer
+metadata:
+  name: labels
+labels:
+  test.example.com/test-label: test-value
+fieldSpecs:
+  - path: metadata/labels
+    create: true
