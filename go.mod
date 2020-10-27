@@ -17,6 +17,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/posener/complete v1.2.2 // indirect
+	github.com/stretchr/testify v1.4.0
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	golang.org/x/tools v0.0.0-20200513154647-78b527d18275 // indirect
 	k8s.io/api v0.18.2

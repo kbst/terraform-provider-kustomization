@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash/crc32"
+	"log"
 	"strconv"
 	"strings"
 
@@ -54,16 +55,11 @@ func dataSourceKustomization() *schema.Resource {
 	}
 }
 
-func idSetHash(v interface{}) int {
-	id := v.(string)
-
-	h := crc32.ChecksumIEEE([]byte(id))
-	f := int(h)
-
+func determinePrefix(id string) (p uint32) {
 	gvk := resid.GvkFromString(id)
 
 	// Default prefix to 5
-	var p uint32 = 5
+	p = 5
 
 	for _, k := range []string{
 		"Namespace",
@@ -83,16 +79,30 @@ func idSetHash(v interface{}) int {
 		}
 	}
 
+	return p
+}
+
+func prefixHash(p uint32, h uint32) int {
 	s := fmt.Sprintf("%01d%010d", p, h)
+	s = s[0:9]
 
 	i, e := strconv.ParseInt(s, 10, 32)
 	if e != nil {
 		// return unmodified hash
-		return f
+		log.Printf("idSetHash: %s", e)
+		return int(h)
 	}
-	f = int(i)
 
-	return f
+	return int(i)
+}
+
+func idSetHash(v interface{}) int {
+	id := v.(string)
+
+	p := determinePrefix(id)
+	h := crc32.ChecksumIEEE([]byte(id))
+
+	return prefixHash(p, h)
 }
 
 func runKustomizeBuild(path string) (rm resmap.ResMap, err error) {
