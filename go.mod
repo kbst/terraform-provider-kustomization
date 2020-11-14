@@ -20,8 +20,8 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	golang.org/x/tools v0.0.0-20200513154647-78b527d18275 // indirect
-	k8s.io/api v0.18.2
-	k8s.io/apimachinery v0.18.2
-	k8s.io/client-go v0.18.2
-	sigs.k8s.io/kustomize/api v0.4.1
+	k8s.io/api v0.18.12
+	k8s.io/apimachinery v0.18.12
+	k8s.io/client-go v0.18.12
+	sigs.k8s.io/kustomize/api v0.6.5
 )
