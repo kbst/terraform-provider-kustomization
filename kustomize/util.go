@@ -3,10 +3,12 @@ package kustomize
 import (
 	"context"
 	"fmt"
+	"runtime"
 
 	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
@@ -105,4 +107,30 @@ func parseJSON(json string) (ur *k8sunstructured.Unstructured, err error) {
 	ur = u.(*k8sunstructured.Unstructured)
 
 	return ur, nil
+}
+
+// log error including caller name and k8s resource
+func logErrorForResource(u *unstructured.Unstructured, m error) error {
+	pc, _, _, _ := runtime.Caller(1)
+	fn := runtime.FuncForPC(pc)
+
+	return fmt.Errorf(
+		"%s: apiVersion: %q, kind: %q, namespace: %q name: %q: %s",
+		fn.Name(),
+		u.GroupVersionKind().GroupVersion(),
+		u.GroupVersionKind().Kind,
+		u.GetNamespace(),
+		u.GetName(),
+		m)
+}
+
+// log error including caller name
+func logError(m error) error {
+	pc, _, _, _ := runtime.Caller(1)
+	fn := runtime.FuncForPC(pc)
+
+	return fmt.Errorf(
+		"%s: %s",
+		fn.Name(),
+		m)
 }

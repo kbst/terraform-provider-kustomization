@@ -48,7 +48,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceCreate: %s", err)
+		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
 	stateConf := &resource.StateChangeConf{
@@ -70,13 +70,14 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	}
 	gvrResp, err := stateConf.WaitForState()
 	if err != nil {
-		return fmt.Errorf(
-			"ResourceCreate: GroupVersionKind '%s' %s",
-			u.GroupVersionKind(),
-			err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("timed out waiting for apiVersion: %q, kind: %q to exist: %s", u.GroupVersionKind().GroupVersion(), u.GroupVersionKind().Kind, err),
+		)
 	}
 
 	gvr := gvrResp.(k8sschema.GroupVersionResource)
+
 	namespace := u.GetNamespace()
 
 	setLastAppliedConfig(u, srcJSON)
@@ -89,7 +90,10 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			Kind:    "Namespace"}
 		nsGvr, err := cgvk.getGVR(nsGvk, false)
 		if err != nil {
-			return fmt.Errorf("ResourceCreate: %s", err)
+			return logErrorForResource(
+				u,
+				fmt.Errorf("api server has no apiVersion: %q, kind: %q: %s", nsGvk.GroupVersion(), nsGvk.Kind, err),
+			)
 		}
 
 		stateConf := &resource.StateChangeConf{
@@ -112,10 +116,10 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		}
 		_, err = stateConf.WaitForState()
 		if err != nil {
-			return fmt.Errorf(
-				"ResourceCreate: namespace '%s' %s",
-				namespace,
-				err)
+			return logErrorForResource(
+				u,
+				fmt.Errorf("timed out waiting for apiVersion: %q, kind: %q, name: %q, to exist: %s", nsGvk.GroupVersion(), nsGvk.Kind, namespace, err),
+			)
 		}
 	}
 
@@ -124,7 +128,10 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		Namespace(namespace).
 		Create(context.TODO(), u, k8smetav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("ResourceCreate: creating '%s' failed: %s", gvr, err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("create failed: %s", err),
+		)
 	}
 
 	id := string(resp.GetUID())
@@ -139,24 +146,29 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	cgvk := m.(*Config).CachedGroupVersionKind
 
-	u, err := parseJSON(d.Get("manifest").(string))
+	srcJSON := d.Get("manifest").(string)
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceRead: %s", err)
+		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		return fmt.Errorf("ResourceRead: %s", err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("failed to query GVR: %s", err),
+		)
 	}
-	namespace := u.GetNamespace()
-	name := u.GetName()
 
 	resp, err := client.
 		Resource(gvr).
-		Namespace(namespace).
-		Get(context.TODO(), name, k8smetav1.GetOptions{})
+		Namespace(u.GetNamespace()).
+		Get(context.TODO(), u.GetName(), k8smetav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("ResourceRead: reading '%s' failed: %s", gvr, err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("get failed: %s", err),
+		)
 	}
 
 	id := string(resp.GetUID())
@@ -177,21 +189,23 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return nil
 	}
 
-	if originalJSON.(string) == "" {
+	srcJSON := originalJSON.(string)
+	if srcJSON == "" {
 		return nil
 	}
 
-	u, err := parseJSON(originalJSON.(string))
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
+		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("failed to query GVR: %s", err),
+		)
 	}
-	namespace := u.GetNamespace()
-	name := u.GetName()
 
 	original, modified, current, err := getOriginalModifiedCurrent(
 		originalJSON.(string),
@@ -199,12 +213,18 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		true,
 		m)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("getOriginalModifiedCurrent failed: %s", err),
+		)
 	}
 
 	patch, err := getPatch(original, modified, current)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: %s", err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("getPatch failed: %s", err),
+		)
 	}
 
 	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
@@ -216,8 +236,8 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	for _, patchType := range patchTypes {
 		_, err = client.
 			Resource(gvr).
-			Namespace(namespace).
-			Patch(context.TODO(), name, patchType, patch, dryRunPatch)
+			Namespace(u.GetNamespace()).
+			Patch(context.TODO(), u.GetName(), patchType, patch, dryRunPatch)
 		if err != nil {
 
 			//
@@ -237,7 +257,10 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 					if strings.HasSuffix(c.Message, ": field is immutable") != true {
 						// if there is any error that is not due to an immutable field
 						// expose to user to let them fix it first
-						return fmt.Errorf("ResourceDiff: %s", err)
+						return logErrorForResource(
+							u,
+							fmt.Errorf("patch failed '%s': %s", patchType, err),
+						)
 					}
 				}
 
@@ -245,7 +268,10 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 				return nil
 			}
 
-			return fmt.Errorf("ResourceDiff: %s", err)
+			return logErrorForResource(
+				u,
+				fmt.Errorf("patch failed '%s': %s", patchType, err),
+			)
 		}
 
 		// If StrategicMergePatchType succeeded without error stop the loop
@@ -259,9 +285,10 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 	client := m.(*Config).Client
 	cgvk := m.(*Config).CachedGroupVersionKind
 
-	u, err := parseJSON(d.Get("manifest").(string))
+	srcJSON := d.Get("manifest").(string)
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return false, fmt.Errorf("ResourceExists: %s", err)
+		return false, logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -273,18 +300,19 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 		}
 		return false, err
 	}
-	namespace := u.GetNamespace()
-	name := u.GetName()
 
 	_, err = client.
 		Resource(gvr).
-		Namespace(namespace).
-		Get(context.TODO(), name, k8smetav1.GetOptions{})
+		Namespace(u.GetNamespace()).
+		Get(context.TODO(), u.GetName(), k8smetav1.GetOptions{})
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("ResourceExists: reading '%s' failed: %s", gvr, err)
+		return false, logErrorForResource(
+			u,
+			fmt.Errorf("get failed: %s", err),
+		)
 	}
 
 	return true, nil
@@ -296,25 +324,26 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
 
-	if !d.HasChange("manifest") {
-		msg := fmt.Sprintf(
-			"Update called without change. old: %s, new: %s",
-			originalJSON,
-			modifiedJSON)
-		return errors.New(msg)
+	srcJSON := originalJSON.(string)
+	u, err := parseJSON(srcJSON)
+	if err != nil {
+		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
-	u, err := parseJSON(originalJSON.(string))
-	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
+	if !d.HasChange("manifest") {
+		return logErrorForResource(
+			u,
+			errors.New("update called without diff"),
+		)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
 	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("failed to query GVR: %s", err),
+		)
 	}
-	namespace := u.GetNamespace()
-	name := u.GetName()
 
 	original, modified, current, err := getOriginalModifiedCurrent(
 		originalJSON.(string),
@@ -322,12 +351,18 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		false,
 		m)
 	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("getOriginalModifiedCurrent failed: %s", err),
+		)
 	}
 
 	patch, err := getPatch(original, modified, current)
 	if err != nil {
-		return fmt.Errorf("ResourceUpdate: %s", err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("getPatch failed: %s", err),
+		)
 	}
 
 	var patchResp *unstructured.Unstructured
@@ -338,8 +373,8 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	for _, patchType := range patchTypes {
 		patchResp, err = client.
 			Resource(gvr).
-			Namespace(namespace).
-			Patch(context.TODO(), name, patchType, patch, k8smetav1.PatchOptions{})
+			Namespace(u.GetNamespace()).
+			Patch(context.TODO(), u.GetName(), patchType, patch, k8smetav1.PatchOptions{})
 		if err != nil {
 			//
 			// If the resource kind does not support StrategicMergePatchType
@@ -348,7 +383,10 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 				continue
 			}
 
-			return fmt.Errorf("ResourceUpdate: patching '%s' failed: %s", gvr, err)
+			return logErrorForResource(
+				u,
+				fmt.Errorf("patch failed '%s': %s", patchType, err),
+			)
 		}
 
 		// If StrategicMergePatchType succeeded without error stop the loop
@@ -367,9 +405,10 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	cgvk := m.(*Config).CachedGroupVersionKind
 
-	u, err := parseJSON(d.Get("manifest").(string))
+	srcJSON := d.Get("manifest").(string)
+	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceDelete: %s", err)
+		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -381,6 +420,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 		}
 		return err
 	}
+
 	namespace := u.GetNamespace()
 	name := u.GetName()
 
@@ -395,7 +435,10 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 			return nil
 		}
 
-		return fmt.Errorf("ResourceDelete: deleting '%s' failed: %s", gvr, err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("delete failed : %s", err),
+		)
 	}
 
 	stateConf := &resource.StateChangeConf{
@@ -411,7 +454,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 				if k8serrors.IsNotFound(err) {
 					return nil, "", nil
 				}
-				return nil, "", fmt.Errorf("refreshing '%s' state failed: %s", gvr, err)
+				return nil, "", err
 			}
 
 			return resp, "deleting", nil
@@ -419,7 +462,10 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	}
 	_, err = stateConf.WaitForState()
 	if err != nil {
-		return fmt.Errorf("ResourceDelete: %s", err)
+		return logErrorForResource(
+			u,
+			fmt.Errorf("timed out waiting for delete: %s", err),
+		)
 	}
 
 	d.SetId("")
@@ -433,6 +479,9 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 
 	rid := resid.FromString(d.Id())
 
+	namespace := rid.Namespace
+	name := rid.Name
+
 	gvk := k8sschema.GroupVersionKind{
 		Group:   rid.Gvk.Group,
 		Version: rid.Gvk.Version,
@@ -440,18 +489,19 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	}
 	gvr, err := cgvk.getGVR(gvk, false)
 	if err != nil {
-		return nil, fmt.Errorf("ResourceImport: %s", err)
+		return nil, logError(
+			fmt.Errorf("apiVersion: %q, kind: %q, namespace: %q, name: %q: failed to query GVR: %s", gvk.GroupVersion(), gvk.Kind, namespace, name, err),
+		)
 	}
-
-	namespace := rid.Namespace
-	name := rid.Name
 
 	resp, err := client.
 		Resource(gvr).
 		Namespace(namespace).
 		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("ResourceImport: reading '%s' failed: %s", gvr, err)
+		return nil, logError(
+			fmt.Errorf("apiVersion: %q, kind: %q, namespace: %q, name: %q: get failed: %s", gvk.GroupVersion(), gvk.Kind, namespace, name, err),
+		)
 	}
 
 	id := string(resp.GetUID())
