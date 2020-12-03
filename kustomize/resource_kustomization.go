@@ -48,7 +48,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceCreate: JSON parse error: '%s' %s", srcJSON, err)
+		return fmt.Errorf("ResourceCreate: JSON parse error: %s", err)
 	}
 
 	stateConf := &resource.StateChangeConf{
@@ -144,7 +144,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceRead: JSON parse error: '%s' %s", srcJSON, err)
+		return fmt.Errorf("ResourceRead: JSON parse error: %s", err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -188,7 +188,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 
 	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceDiff: JSON parse error: '%s' %s", srcJSON, err)
+		return fmt.Errorf("ResourceDiff: JSON parse error: %s", err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -268,7 +268,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return false, fmt.Errorf("ResourceExists: JSON parse error: '%s' %s", srcJSON, err)
+		return false, fmt.Errorf("ResourceExists: JSON parse error: %s", err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -314,7 +314,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	srcJSON := originalJSON.(string)
 	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceUpdate: JSON parse error: '%s' %s", srcJSON, err)
+		return fmt.Errorf("ResourceUpdate: JSON parse error: %s", err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
@@ -379,7 +379,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
 	if err != nil {
-		return fmt.Errorf("ResourceDelete: JSON parse error: '%s' %s", srcJSON, err)
+		return fmt.Errorf("ResourceDelete: JSON parse error: %s", err)
 	}
 
 	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
