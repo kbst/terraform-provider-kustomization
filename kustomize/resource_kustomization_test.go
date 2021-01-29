@@ -3,6 +3,7 @@ package kustomize
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -94,6 +95,29 @@ resource "kustomization_resource" "dep2" {
 	manifest = data.kustomization_build.test.manifests["apps_v1_Deployment|test-basic|test2"]
 }
 `
+}
+
+//
+//
+// Import test invalid id
+func TestAccResourceKustomization_importInvalidID(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Test state import
+			{
+				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-basic\"]",
+				ImportStateId:     "invalidID",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ExpectError:       regexp.MustCompile("invalid ID: \"invalidID\", valid IDs look like: \"~G_v1_Namespace|~X|example\""),
+			},
+		},
+	})
 }
 
 //
