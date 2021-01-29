@@ -477,6 +477,11 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	client := m.(*Config).Client
 	cgvk := m.(*Config).CachedGroupVersionKind
 
+	// "|" must match resid.separator
+	if len(strings.Split(d.Id(), "|")) != 3 {
+		return nil, logError(fmt.Errorf("invalid ID: %q, valid IDs look like: \"~G_v1_Namespace|~X|example\"", d.Id()))
+	}
+
 	rid := resid.FromString(d.Id())
 
 	namespace := rid.Namespace
