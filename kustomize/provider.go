@@ -37,9 +37,11 @@ func Provider() *schema.Provider {
 		DataSourcesMap: map[string]*schema.Resource{
 			// legacy name of the data source
 			"kustomization": dataSourceKustomization(),
-
 			// new name for the data source
 			"kustomization_build": dataSourceKustomization(),
+
+			// define overlay from TF
+			"kustomization_overlay": dataSourceKustomizationOverlay(),
 		},
 
 		Schema: map[string]*schema.Schema{
