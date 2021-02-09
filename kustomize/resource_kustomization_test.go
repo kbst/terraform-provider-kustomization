@@ -330,8 +330,8 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com\"]",
-				ImportStateId:     "apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com",
+				ResourceName:      "kustomization_resource.test[\"apiextensions.k8s.io_v1_CustomResourceDefinition|~X|clusteredcrds.test.example.com\"]",
+				ImportStateId:     "apiextensions.k8s.io_v1_CustomResourceDefinition|~X|clusteredcrds.test.example.com",
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
@@ -342,11 +342,11 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 func testAccResourceKustomizationConfig_crd(path string) string {
 	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "clusteredcrd" {
-	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|clusteredcrds.test.example.com"]
+	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io_v1_CustomResourceDefinition|~X|clusteredcrds.test.example.com"]
 }
 
 resource "kustomization_resource" "namespacedcrd" {
-	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io_v1beta1_CustomResourceDefinition|~X|namespacedcrds.test.example.com"]
+	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io_v1_CustomResourceDefinition|~X|namespacedcrds.test.example.com"]
 }
 
 resource "kustomization_resource" "clusteredco" {
