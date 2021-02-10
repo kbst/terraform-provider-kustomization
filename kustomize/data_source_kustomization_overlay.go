@@ -18,6 +18,11 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 		Read: kustomizationOverlay,
 
 		Schema: map[string]*schema.Schema{
+			"common_annotations": &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
 			"namespace": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -45,9 +50,21 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 }
 
 func getKustomization(d *schema.ResourceData) (k types.Kustomization, err error) {
+
 	var res []string
-	for _, v := range d.Get("resources").([]interface{}) {
-		res = append(res, v.(string))
+	rdRes := d.Get("resources")
+	if rdRes != nil {
+		for _, v := range rdRes.([]interface{}) {
+			res = append(res, v.(string))
+		}
+	}
+
+	cas := make(map[string]string)
+	rdCA := d.Get("common_annotations")
+	if rdCA != nil {
+		for k, v := range rdCA.(map[string]interface{}) {
+			cas[k] = v.(string)
+		}
 	}
 
 	k = types.Kustomization{
@@ -55,8 +72,9 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization, err error)
 			APIVersion: "kustomize.config.k8s.io/v1beta1",
 			Kind:       "Kustomization",
 		},
-		Namespace: d.Get("namespace").(string),
-		Resources: res,
+		CommonAnnotations: cas,
+		Namespace:         d.Get("namespace").(string),
+		Resources:         res,
 	}
 
 	return k, nil
