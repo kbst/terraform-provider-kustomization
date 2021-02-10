@@ -23,6 +23,11 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
+			"common_labels": &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
 			"namespace": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -67,12 +72,21 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization, err error)
 		}
 	}
 
+	cls := make(map[string]string)
+	rdCL := d.Get("common_labels")
+	if rdCL != nil {
+		for k, v := range rdCL.(map[string]interface{}) {
+			cls[k] = v.(string)
+		}
+	}
+
 	k = types.Kustomization{
 		TypeMeta: types.TypeMeta{
 			APIVersion: "kustomize.config.k8s.io/v1beta1",
 			Kind:       "Kustomization",
 		},
 		CommonAnnotations: cas,
+		CommonLabels:      cls,
 		Namespace:         d.Get("namespace").(string),
 		Resources:         res,
 	}

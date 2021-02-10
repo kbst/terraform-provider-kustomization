@@ -138,6 +138,54 @@ func loopCheckCommonAnnotations(u *k8sunstructured.Unstructured, exp interface{}
 
 //
 //
+// Test common_labels attr
+func TestKustomizationCommonLabels(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationCommonLabelsConfig(),
+				Check: testKustomizationLoopManifests(
+					"data.kustomization_overlay.test",
+					map[string]string{"test-label": "true"},
+					loopCheckCommonLabels,
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationCommonLabelsConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	common_labels = {
+		test-label: true
+	}
+
+	resources = [
+		"../test_kustomizations/basic/initial",
+	]
+}
+`
+}
+
+func loopCheckCommonLabels(u *k8sunstructured.Unstructured, exp interface{}) error {
+	ls := u.GetLabels()
+	el := exp.(map[string]string)
+
+	for k, v := range el {
+		if ls[k] != v {
+			return fmt.Errorf("'label %q does not equal %q: %q'", k, v, u.GroupVersionKind())
+		}
+	}
+
+	return nil
+}
+
+//
+//
 // Test functions
 func getDataSourceManifestsFromTestState(s *terraform.State, n string) (urs []*k8sunstructured.Unstructured, err error) {
 	rs, ok := s.DeepCopy().RootModule().Resources[n]
