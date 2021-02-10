@@ -54,48 +54,60 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 	}
 }
 
-func getKustomization(d *schema.ResourceData) (k types.Kustomization, err error) {
+func convertListInterfaceToListString(in []interface{}) (out []string) {
+	for _, v := range in {
+		out = append(out, v.(string))
+	}
+	return out
+}
 
-	var res []string
-	rdRes := d.Get("resources")
-	if rdRes != nil {
-		for _, v := range rdRes.([]interface{}) {
-			res = append(res, v.(string))
-		}
+func convertMapStringInterfaceToMapStringString(in map[string]interface{}) (out map[string]string) {
+	out = make(map[string]string)
+	for k, v := range in {
+		out[k] = v.(string)
+	}
+	return out
+}
+
+func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
+	k.TypeMeta = types.TypeMeta{
+		APIVersion: "kustomize.config.k8s.io/v1beta1",
+		Kind:       "Kustomization",
 	}
 
-	cas := make(map[string]string)
-	rdCA := d.Get("common_annotations")
-	if rdCA != nil {
-		for k, v := range rdCA.(map[string]interface{}) {
-			cas[k] = v.(string)
-		}
+	if d.Get("common_annotations") != nil {
+		k.CommonAnnotations = convertMapStringInterfaceToMapStringString(
+			d.Get("common_annotations").(map[string]interface{}),
+		)
 	}
 
-	cls := make(map[string]string)
-	rdCL := d.Get("common_labels")
-	if rdCL != nil {
-		for k, v := range rdCL.(map[string]interface{}) {
-			cls[k] = v.(string)
-		}
+	if d.Get("common_labels") != nil {
+		k.CommonLabels = convertMapStringInterfaceToMapStringString(
+			d.Get("common_labels").(map[string]interface{}),
+		)
 	}
 
-	k = types.Kustomization{
-		TypeMeta: types.TypeMeta{
-			APIVersion: "kustomize.config.k8s.io/v1beta1",
-			Kind:       "Kustomization",
-		},
-		CommonAnnotations: cas,
-		CommonLabels:      cls,
-		Namespace:         d.Get("namespace").(string),
-		Resources:         res,
+	if d.Get("components") != nil {
+		k.Components = convertListInterfaceToListString(
+			d.Get("components").([]interface{}),
+		)
 	}
 
-	return k, nil
+	if d.Get("namespace") != nil {
+		k.Namespace = d.Get("namespace").(string)
+	}
+
+	if d.Get("resources") != nil {
+		k.Resources = convertListInterfaceToListString(
+			d.Get("resources").([]interface{}),
+		)
+	}
+
+	return k
 }
 
 func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
-	k, _ := getKustomization(d)
+	k := getKustomization(d)
 
 	fSys := filesys.MakeFsOnDisk()
 
