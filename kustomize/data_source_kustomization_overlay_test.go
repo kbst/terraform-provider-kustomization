@@ -250,3 +250,37 @@ output "check" {
 
 `
 }
+
+//
+//
+// Test resources attr
+func TestDataSourceKustomizationOverlay_resources(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_resources(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-basic\"}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_resources() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"../test_kustomizations/basic/initial",
+	]
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-basic"]
+}
+
+`
+}
