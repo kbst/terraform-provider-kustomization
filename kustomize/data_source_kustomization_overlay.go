@@ -28,6 +28,23 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
+			"config_map_generator": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"literals": {
+							Type:     schema.TypeList,
+							Required: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+					},
+				},
+			},
 			"namespace": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -91,6 +108,19 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 		k.Components = convertListInterfaceToListString(
 			d.Get("components").([]interface{}),
 		)
+	}
+
+	if d.Get("config_map_generator") != nil {
+		cmgs := d.Get("config_map_generator").([]interface{})
+		for i := range cmgs {
+			cmg := cmgs[i].(map[string]interface{})
+			cma := types.ConfigMapArgs{}
+			cma.Name = cmg["name"].(string)
+			cma.LiteralSources = convertListInterfaceToListString(
+				cmg["literals"].([]interface{}),
+			)
+			k.ConfigMapGenerator = append(k.ConfigMapGenerator, cma)
+		}
 	}
 
 	if d.Get("namespace") != nil {

@@ -186,6 +186,65 @@ func loopCheckCommonLabels(u *k8sunstructured.Unstructured, exp interface{}) err
 
 //
 //
+// Test config_map_generator attr
+func TestKustomizationConfigMapGenerator(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationConfigMapGeneratorConfig(),
+				Check: testKustomizationLoopManifests(
+					"data.kustomization_overlay.test",
+					map[string]string{"KEY1": "VALUE1", "KEY2": "VALUE2"},
+					loopCheckConfigMapGenerator,
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationConfigMapGeneratorConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	config_map_generator {
+		name = "test-configmap1"
+		literals = [
+			"KEY1=VALUE1",
+			"KEY2=VALUE2"
+		]
+	}
+
+	config_map_generator {
+		name = "test-configmap2"
+		literals = [
+			"KEY1=VALUE1",
+			"KEY2=VALUE2"
+		]
+	}
+
+	resources = []
+}
+`
+}
+
+func loopCheckConfigMapGenerator(u *k8sunstructured.Unstructured, exp interface{}) error {
+	uc := u.UnstructuredContent()
+	d := uc["data"].(map[string]interface{})
+	ed := exp.(map[string]string)
+
+	for k, v := range d {
+		if v.(string) != ed[k] {
+			return fmt.Errorf("'%q not equal to %q: %q'", d, ed, u.GroupVersionKind())
+		}
+	}
+
+	return nil
+}
+
+//
+//
 // Test functions
 func getDataSourceManifestsFromTestState(s *terraform.State, n string) (urs []*k8sunstructured.Unstructured, err error) {
 	rs, ok := s.DeepCopy().RootModule().Resources[n]
