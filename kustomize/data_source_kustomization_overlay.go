@@ -78,6 +78,30 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
+			"images": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"new_name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"new_tag": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"digest": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"namespace": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -177,6 +201,25 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 		k.Crds = convertListInterfaceToListString(
 			d.Get("crds").([]interface{}),
 		)
+	}
+
+	if d.Get("images") != nil {
+		imgs := d.Get("images").([]interface{})
+		for i := range imgs {
+			if imgs[i] == nil {
+				continue
+			}
+
+			img := imgs[i].(map[string]interface{})
+			kimg := types.Image{}
+
+			kimg.Name = img["name"].(string)
+			kimg.NewName = img["new_name"].(string)
+			kimg.NewTag = img["new_tag"].(string)
+			kimg.Digest = img["digest"].(string)
+
+			k.Images = append(k.Images, kimg)
+		}
 	}
 
 	if d.Get("namespace") != nil {

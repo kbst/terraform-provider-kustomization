@@ -27,6 +27,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "components.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "config_map_generator.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "crds.#", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "images.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "namespace", "test-overlay-basic"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
 
@@ -51,6 +52,8 @@ data "kustomization_overlay" "test" {
 	config_map_generator {}
 
 	crds = []
+
+	images {}
 
 	namespace = "test-overlay-basic"
 
@@ -319,6 +322,44 @@ data "kustomization_overlay" "test" {
 	crds = [
 		"test_kustomizations/crd/initial/crd.yaml",
 	]
+}
+`
+}
+
+//
+//
+// Test images attr
+func TestDataSourceKustomizationOverlay_images(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationImagesConfig(),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"testname@sha256:abcdefghijklmnop123456\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+			},
+		},
+	})
+}
+
+func testKustomizationImagesConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/basic/initial",
+	]
+
+	images {
+		name = "nginx"
+		new_name = "testname"
+		new_tag = "testtag"
+		digest = "sha256:abcdefghijklmnop123456"
+	}
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
 }
 `
 }
