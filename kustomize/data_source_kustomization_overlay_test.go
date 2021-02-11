@@ -31,8 +31,8 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
 
 					// Generated
-					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "1"),
-					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "1"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "0"),
 				),
 			},
 		},
@@ -48,10 +48,7 @@ data "kustomization_overlay" "test" {
 
 	components = []
 
-	config_map_generator {
-		name = "test-cm"
-		literals = []
-	}
+	config_map_generator {}
 
 	crds = []
 
@@ -182,7 +179,7 @@ func TestDataSourceKustomizationOverlay_configMapGenerator(t *testing.T) {
 				Config: testKustomizationConfigMapGeneratorConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap1-gkfb9fdgch\"}}"),
-					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap2-gkfb9fdgch\"}}"),
+					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"ENV1\":\"VALUE1\",\"ENV2\":\"VALUE2\",\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\",\"properties.env\":\"ENV1=VALUE1\\nENV2=VALUE2\\n\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap2-5tgmgc9cmf\"}}"),
 				),
 			},
 		},
@@ -194,6 +191,7 @@ func testKustomizationConfigMapGeneratorConfig() string {
 data "kustomization_overlay" "test" {
 	config_map_generator {
 		name = "test-configmap1"
+		behavior = "create"
 		literals = [
 			"KEY1=VALUE1",
 			"KEY2=VALUE2"
@@ -206,6 +204,12 @@ data "kustomization_overlay" "test" {
 			"KEY1=VALUE1",
 			"KEY2=VALUE2"
 		]
+		envs = [
+			"test_kustomizations/_test_files/properties.env"
+		]
+		files = [
+			"test_kustomizations/_test_files/properties.env"
+		]
 	}
 }
 
@@ -214,7 +218,7 @@ output "check_cm1" {
 }
 
 output "check_cm2" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap2-gkfb9fdgch"]
+	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap2-5tgmgc9cmf"]
 }
 `
 }

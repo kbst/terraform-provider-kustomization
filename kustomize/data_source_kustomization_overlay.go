@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 
 	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/types"
@@ -42,11 +43,29 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+						},
+						"behavior": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ValidateFunc: validation.StringInSlice(
+								[]string{"create", "replace", "merge"},
+								false,
+							),
+						},
+						"envs": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"files": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 						"literals": {
 							Type:     schema.TypeList,
-							Required: true,
+							Optional: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 					},
@@ -127,12 +146,29 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 	if d.Get("config_map_generator") != nil {
 		cmgs := d.Get("config_map_generator").([]interface{})
 		for i := range cmgs {
+			if cmgs[i] == nil {
+				continue
+			}
+
 			cmg := cmgs[i].(map[string]interface{})
 			cma := types.ConfigMapArgs{}
+
 			cma.Name = cmg["name"].(string)
+
+			cma.Behavior = cmg["behavior"].(string)
+
+			cma.EnvSources = convertListInterfaceToListString(
+				cmg["envs"].([]interface{}),
+			)
+
 			cma.LiteralSources = convertListInterfaceToListString(
 				cmg["literals"].([]interface{}),
 			)
+
+			cma.FileSources = convertListInterfaceToListString(
+				cmg["files"].([]interface{}),
+			)
+
 			k.ConfigMapGenerator = append(k.ConfigMapGenerator, cma)
 		}
 	}
