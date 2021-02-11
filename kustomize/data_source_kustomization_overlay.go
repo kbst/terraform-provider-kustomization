@@ -137,6 +137,37 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
+			"secret_generator": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"type": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"envs": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"files": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"literals": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+					},
+				},
+			},
 			"ids": &schema.Schema{
 				Type:     schema.TypeSet,
 				Computed: true,
@@ -279,6 +310,35 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 		k.Resources = convertListInterfaceToListString(
 			d.Get("resources").([]interface{}),
 		)
+	}
+
+	if d.Get("secret_generator") != nil {
+		sg := d.Get("secret_generator").([]interface{})
+		for i := range sg {
+			if sg[i] == nil {
+				continue
+			}
+
+			s := sg[i].(map[string]interface{})
+			sa := types.SecretArgs{}
+
+			sa.Name = s["name"].(string)
+			sa.Type = s["type"].(string)
+
+			sa.EnvSources = convertListInterfaceToListString(
+				s["envs"].([]interface{}),
+			)
+
+			sa.LiteralSources = convertListInterfaceToListString(
+				s["literals"].([]interface{}),
+			)
+
+			sa.FileSources = convertListInterfaceToListString(
+				s["files"].([]interface{}),
+			)
+
+			k.SecretGenerator = append(k.SecretGenerator, sa)
+		}
 	}
 
 	return k

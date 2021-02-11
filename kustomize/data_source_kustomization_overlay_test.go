@@ -31,6 +31,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "namespace", "test-overlay-basic"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "replicas.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "secret_generator.#", "1"),
 
 					// Generated
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "0"),
@@ -65,6 +66,8 @@ data "kustomization_overlay" "test" {
 	replicas {}
 
 	resources = []
+
+	secret_generator {}
 }
 `
 }
@@ -440,6 +443,63 @@ data "kustomization_overlay" "test" {
 
 output "check" {
 	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
+}
+`
+}
+
+//
+//
+// Test secret_generator attr
+func TestDataSourceKustomizationOverlay_secretGenerator(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationSecretGeneratorConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret1-ht6gmk5252\"},\"type\":\"Opaque\"}"),
+					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"ENV1\":\"VkFMVUUx\",\"ENV2\":\"VkFMVUUy\",\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\",\"properties.env\":\"RU5WMT1WQUxVRTEKRU5WMj1WQUxVRTIK\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret2-h55cfd6gfg\"},\"type\":\"Opaque\"}"),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationSecretGeneratorConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	secret_generator {
+		name = "test-secret1"
+		type = "Opaque"
+		literals = [
+			"KEY1=VALUE1",
+			"KEY2=VALUE2"
+		]
+	}
+
+	secret_generator {
+		name = "test-secret2"
+		literals = [
+			"KEY1=VALUE1",
+			"KEY2=VALUE2"
+		]
+		envs = [
+			"test_kustomizations/_test_files/properties.env"
+		]
+		files = [
+			"test_kustomizations/_test_files/properties.env"
+		]
+	}
+}
+
+output "check_cm1" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret1-ht6gmk5252"]
+}
+
+output "check_cm2" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret2-h55cfd6gfg"]
 }
 `
 }
