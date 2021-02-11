@@ -11,7 +11,7 @@ terraform {
 }
 
 data "kustomization_build" "test" {
-  path = "test_kustomizations/basic/initial"
+  path = "kustomize/test_kustomizations/basic/initial"
 }
 
 resource "kustomization_resource" "from_build" {
@@ -24,7 +24,7 @@ data "kustomization_overlay" "test" {
   namespace = "test-overlay"
 
   resources = [
-    "test_kustomizations/basic/initial"
+    "kustomize/test_kustomizations/basic/initial"
   ]
 }
 

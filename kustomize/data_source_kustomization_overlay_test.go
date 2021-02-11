@@ -85,7 +85,7 @@ data "kustomization_overlay" "test" {
 	}
 
 	resources = [
-		"../test_kustomizations/basic/initial",
+		"test_kustomizations/basic/initial",
 	]
 }
 
@@ -122,7 +122,7 @@ data "kustomization_overlay" "test" {
 	}
 
 	resources = [
-		"../test_kustomizations/basic/initial",
+		"test_kustomizations/basic/initial",
 	]
 }
 
@@ -155,7 +155,7 @@ func testDataSourceKustomizationOverlayConfig_components() string {
 	return `
 data "kustomization_overlay" "test" {
 	components = [
-		"../test_kustomizations/component",
+		"test_kustomizations/component",
 	]
 }
 
@@ -240,7 +240,7 @@ data "kustomization_overlay" "test" {
 	namespace = "test-overlay-namespace"
 
 	resources = [
-		"../test_kustomizations/basic/initial",
+		"test_kustomizations/basic/initial",
 	]
 }
 
@@ -274,7 +274,7 @@ func testDataSourceKustomizationOverlayConfig_resources() string {
 	return `
 data "kustomization_overlay" "test" {
 	resources = [
-		"../test_kustomizations/basic/initial",
+		"test_kustomizations/basic/initial",
 	]
 }
 

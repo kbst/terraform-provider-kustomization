@@ -189,7 +189,7 @@ jobs:
 
     - name: 'Kubectl apply'
       run: |
-        kustomize build test_kustomizations/basic/initial | kubectl apply -f -
+        kustomize build kustomize/test_kustomizations/basic/initial | kubectl apply -f -
 
     - name: 'Terraform Init'
       run: terraform init
