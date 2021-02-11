@@ -102,7 +102,15 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 					},
 				},
 			},
+			"name_prefix": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"namespace": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"name_suffix": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -222,8 +230,16 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 		}
 	}
 
+	if d.Get("name_prefix") != nil {
+		k.NamePrefix = d.Get("name_prefix").(string)
+	}
+
 	if d.Get("namespace") != nil {
 		k.Namespace = d.Get("namespace").(string)
+	}
+
+	if d.Get("name_suffix") != nil {
+		k.NameSuffix = d.Get("name_suffix").(string)
 	}
 
 	if d.Get("resources") != nil {

@@ -55,7 +55,11 @@ data "kustomization_overlay" "test" {
 
 	images {}
 
+	name_prefix = "test-"
+
 	namespace = "test-overlay-basic"
+
+	name_suffix = "-test"
 
 	resources = []
 }
@@ -257,6 +261,43 @@ data "kustomization_overlay" "test" {
 
 output "check" {
 	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-overlay-namespace"]
+}
+
+`
+}
+
+//
+//
+// Test name_prefix and name_suffix attr
+func TestDataSourceKustomizationOverlay_name_prefix_suffix(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_name_prefix_suffix(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test-test-test\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"test\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_name_prefix_suffix() string {
+	return `
+data "kustomization_overlay" "test" {
+	name_prefix = "test-"
+	name_suffix = "-test"
+
+	resources = [
+		"test_kustomizations/basic/initial",
+	]
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_Service|test-basic|test-test-test"]
 }
 
 `
