@@ -1,6 +1,7 @@
 package kustomize
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -25,6 +26,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "common_labels.%", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "components.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "config_map_generator.#", "1"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "crds.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "namespace", "test-overlay-basic"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
 
@@ -50,6 +52,8 @@ data "kustomization_overlay" "test" {
 		name = "test-cm"
 		literals = []
 	}
+
+	crds = []
 
 	namespace = "test-overlay-basic"
 
@@ -282,5 +286,35 @@ output "check" {
 	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-basic"]
 }
 
+`
+}
+
+//
+//
+// Test crds attr
+func TestDataSourceKustomizationOverlay_crds(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_crds(),
+				// we only need to validate we pass the value to Kustomize
+				// this test verifies that the path by providing an invalid OpenAPI spec
+				// the Kustomize error proves the path was passed correctly
+				ExpectError: regexp.MustCompile("json: cannot unmarshal string into Go value of type common.OpenAPIDefinition"),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_crds() string {
+	return `
+data "kustomization_overlay" "test" {
+	crds = [
+		"test_kustomizations/crd/initial/crd.yaml",
+	]
+}
 `
 }

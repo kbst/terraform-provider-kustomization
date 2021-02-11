@@ -52,6 +52,13 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 					},
 				},
 			},
+			"crds": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 			"namespace": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -128,6 +135,12 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			)
 			k.ConfigMapGenerator = append(k.ConfigMapGenerator, cma)
 		}
+	}
+
+	if d.Get("crds") != nil {
+		k.Crds = convertListInterfaceToListString(
+			d.Get("crds").([]interface{}),
+		)
 	}
 
 	if d.Get("namespace") != nil {
