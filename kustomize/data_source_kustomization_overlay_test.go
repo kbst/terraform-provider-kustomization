@@ -1,119 +1,83 @@
 package kustomize
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
-	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 //
 //
 // Basic acceptance test
-func TestAccDataSourceKustomizationOverlay_basic(t *testing.T) {
-
-	resource.Test(t, resource.TestCase{
-		//PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccDataSourceKustomizationOverlayConfig_basic(),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("data.kustomization_overlay.test", "id"),
-					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "1"),
-					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.0", "../test_kustomizations/basic/initial"),
-					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "4"),
-					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "4"),
-				),
-			},
-		},
-	})
-}
-
-func testAccDataSourceKustomizationOverlayConfig_basic() string {
-	return `
-data "kustomization_overlay" "test" {
-	resources = [
-		"../test_kustomizations/basic/initial",
-	]
-
-	components = [
-		"../test_kustomizations/component"
-	]
-}
-`
-}
-
-//
-//
-// Test namespace attr
-func TestKustomizationNamespace(t *testing.T) {
+func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		IsUnitTest: true,
 		Providers:  testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testKustomizationNamespaceConfig(),
-				Check: testKustomizationLoopManifests(
-					"data.kustomization_overlay.test",
-					"test-namespace",
-					loopCheckNamespace,
+				Config: testDataSourceKustomizationOverlayConfig_basic(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("data.kustomization_overlay.test", "id"),
+
+					// Kustomization attributes
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "common_annotations.%", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "common_labels.%", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "components.#", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "config_map_generator.#", "1"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "namespace", "test-overlay-basic"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
+
+					// Generated
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "1"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "1"),
 				),
 			},
 		},
 	})
 }
 
-func testKustomizationNamespaceConfig() string {
+func testDataSourceKustomizationOverlayConfig_basic() string {
 	return `
 data "kustomization_overlay" "test" {
-	namespace = "test-namespace"
+	common_annotations = {}
 
-	resources = [
-		"../test_kustomizations/basic/initial",
-	]
-}
-`
-}
+	common_labels = {}
 
-func loopCheckNamespace(u *k8sunstructured.Unstructured, exp interface{}) error {
-	ns := u.GetNamespace()
-	ens := exp.(string)
+	components = []
 
-	// resources that are not namespaced
-	// have namespace set to empty string
-	if ns != "" && ns != ens {
-		return fmt.Errorf("'namespace %q does not match %q: %q'", ns, ens, u.GroupVersionKind())
+	config_map_generator {
+		name = "test-cm"
+		literals = []
 	}
 
-	return nil
+	namespace = "test-overlay-basic"
+
+	resources = []
+}
+`
 }
 
 //
 //
 // Test common_annotations attr
-func TestKustomizationCommonAnnotations(t *testing.T) {
+func TestDataSourceKustomizationOverlay_commonAnnotations(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		IsUnitTest: true,
 		Providers:  testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testKustomizationCommonAnnotationsConfig(),
-				Check: testKustomizationLoopManifests(
-					"data.kustomization_overlay.test",
-					map[string]string{"test-annotation": "true"},
-					loopCheckCommonAnnotations,
+				Config: testDataSourceKustomizationOverlayConfig_commonAnnotations(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"name\":\"test-basic\"}}"),
 				),
 			},
 		},
 	})
 }
 
-func testKustomizationCommonAnnotationsConfig() string {
+func testDataSourceKustomizationOverlayConfig_commonAnnotations() string {
 	return `
 data "kustomization_overlay" "test" {
 	common_annotations = {
@@ -124,44 +88,33 @@ data "kustomization_overlay" "test" {
 		"../test_kustomizations/basic/initial",
 	]
 }
-`
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-basic"]
 }
-
-func loopCheckCommonAnnotations(u *k8sunstructured.Unstructured, exp interface{}) error {
-	as := u.GetAnnotations()
-	ea := exp.(map[string]string)
-
-	for k, v := range ea {
-		if as[k] != v {
-			return fmt.Errorf("'annotation %q does not equal %q: %q'", k, v, u.GroupVersionKind())
-		}
-	}
-
-	return nil
+`
 }
 
 //
 //
 // Test common_labels attr
-func TestKustomizationCommonLabels(t *testing.T) {
+func TestDataSourceKustomizationOverlay_commonLabels(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		IsUnitTest: true,
 		Providers:  testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testKustomizationCommonLabelsConfig(),
-				Check: testKustomizationLoopManifests(
-					"data.kustomization_overlay.test",
-					map[string]string{"test-label": "true"},
-					loopCheckCommonLabels,
+				Config: testDataSourceKustomizationOverlayConfig_commonLabels(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"labels\":{\"test-label\":\"true\"},\"name\":\"test-basic\"}}"),
 				),
 			},
 		},
 	})
 }
 
-func testKustomizationCommonLabelsConfig() string {
+func testDataSourceKustomizationOverlayConfig_commonLabels() string {
 	return `
 data "kustomization_overlay" "test" {
 	common_labels = {
@@ -172,26 +125,50 @@ data "kustomization_overlay" "test" {
 		"../test_kustomizations/basic/initial",
 	]
 }
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-basic"]
+}
 `
 }
 
-func loopCheckCommonLabels(u *k8sunstructured.Unstructured, exp interface{}) error {
-	ls := u.GetLabels()
-	el := exp.(map[string]string)
+//
+//
+// Test components attr
+func TestDataSourceKustomizationOverlay_components(t *testing.T) {
 
-	for k, v := range el {
-		if ls[k] != v {
-			return fmt.Errorf("'label %q does not equal %q: %q'", k, v, u.GroupVersionKind())
-		}
-	}
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_components(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"from-component-6ct58987ht\"}}"),
+				),
+			},
+		},
+	})
+}
 
-	return nil
+func testDataSourceKustomizationOverlayConfig_components() string {
+	return `
+data "kustomization_overlay" "test" {
+	components = [
+		"../test_kustomizations/component",
+	]
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|from-component-6ct58987ht"]
+}
+`
 }
 
 //
 //
 // Test config_map_generator attr
-func TestKustomizationConfigMapGenerator(t *testing.T) {
+func TestDataSourceKustomizationOverlay_configMapGenerator(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		IsUnitTest: true,
@@ -199,10 +176,9 @@ func TestKustomizationConfigMapGenerator(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testKustomizationConfigMapGeneratorConfig(),
-				Check: testKustomizationLoopManifests(
-					"data.kustomization_overlay.test",
-					map[string]string{"KEY1": "VALUE1", "KEY2": "VALUE2"},
-					loopCheckConfigMapGenerator,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap1-gkfb9fdgch\"}}"),
+					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap2-gkfb9fdgch\"}}"),
 				),
 			},
 		},
@@ -227,69 +203,50 @@ data "kustomization_overlay" "test" {
 			"KEY2=VALUE2"
 		]
 	}
+}
 
-	resources = []
+output "check_cm1" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap1-gkfb9fdgch"]
+}
+
+output "check_cm2" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap2-gkfb9fdgch"]
 }
 `
 }
 
-func loopCheckConfigMapGenerator(u *k8sunstructured.Unstructured, exp interface{}) error {
-	uc := u.UnstructuredContent()
-	d := uc["data"].(map[string]interface{})
-	ed := exp.(map[string]string)
-
-	for k, v := range d {
-		if v.(string) != ed[k] {
-			return fmt.Errorf("'%q not equal to %q: %q'", d, ed, u.GroupVersionKind())
-		}
-	}
-
-	return nil
-}
-
 //
 //
-// Test functions
-func getDataSourceManifestsFromTestState(s *terraform.State, n string) (urs []*k8sunstructured.Unstructured, err error) {
-	rs, ok := s.DeepCopy().RootModule().Resources[n]
-	if !ok {
-		return nil, fmt.Errorf("Not found: %s", n)
-	}
+// Test namespace attr
+func TestDataSourceKustomizationOverlay_namespace(t *testing.T) {
 
-	d := dataSourceKustomization().Data(rs.Primary)
-
-	for _, srcJSON := range d.Get("manifests").(map[string]interface{}) {
-		u, err := parseJSON(srcJSON.(string))
-		if err != nil {
-			return nil, err
-		}
-		urs = append(urs, u)
-	}
-
-	return urs, nil
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_namespace(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-overlay-namespace\"}}"),
+				),
+			},
+		},
+	})
 }
 
-func testKustomizationLoopManifests(n string, exp interface{}, f loopCheckFunc) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		urs, err := getDataSourceManifestsFromTestState(s, n)
-		if err != nil {
-			return err
-		}
+func testDataSourceKustomizationOverlayConfig_namespace() string {
+	return `
+data "kustomization_overlay" "test" {
+	namespace = "test-overlay-namespace"
 
-		var errs []error
-		for _, u := range urs {
-			e := f(u, exp)
-			if e != nil {
-				errs = append(errs, e)
-			}
-		}
-
-		if len(errs) > 0 {
-			return fmt.Errorf("errors: %+v", errs)
-		}
-
-		return nil
-	}
+	resources = [
+		"../test_kustomizations/basic/initial",
+	]
 }
 
-type loopCheckFunc func(u *k8sunstructured.Unstructured, exp interface{}) error
+output "check" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-overlay-namespace"]
+}
+
+`
+}
