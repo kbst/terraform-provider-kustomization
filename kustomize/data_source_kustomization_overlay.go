@@ -28,6 +28,13 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
+			"components": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 			"config_map_generator": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,

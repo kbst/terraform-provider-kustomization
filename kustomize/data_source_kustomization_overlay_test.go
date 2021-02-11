@@ -38,6 +38,10 @@ data "kustomization_overlay" "test" {
 	resources = [
 		"../test_kustomizations/basic/initial",
 	]
+
+	components = [
+		"../test_kustomizations/component"
+	]
 }
 `
 }
