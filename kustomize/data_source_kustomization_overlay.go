@@ -114,6 +114,22 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"replicas": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"count": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"resources": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -227,6 +243,23 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			kimg.Digest = img["digest"].(string)
 
 			k.Images = append(k.Images, kimg)
+		}
+	}
+
+	if d.Get("replicas") != nil {
+		rs := d.Get("replicas").([]interface{})
+		for i := range rs {
+			if rs[i] == nil {
+				continue
+			}
+
+			img := rs[i].(map[string]interface{})
+			r := types.Replica{}
+
+			r.Name = img["name"].(string)
+			r.Count = int64(img["count"].(int))
+
+			k.Replicas = append(k.Replicas, r)
 		}
 	}
 

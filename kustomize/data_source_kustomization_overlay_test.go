@@ -29,6 +29,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "crds.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "images.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "namespace", "test-overlay-basic"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "replicas.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
 
 					// Generated
@@ -60,6 +61,8 @@ data "kustomization_overlay" "test" {
 	namespace = "test-overlay-basic"
 
 	name_suffix = "-test"
+
+	replicas {}
 
 	resources = []
 }
@@ -396,6 +399,42 @@ data "kustomization_overlay" "test" {
 		new_name = "testname"
 		new_tag = "testtag"
 		digest = "sha256:abcdefghijklmnop123456"
+	}
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
+}
+`
+}
+
+//
+//
+// Test replicas attr
+func TestDataSourceKustomizationOverlay_replicas(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationReplicasConfig(),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":5,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+			},
+		},
+	})
+}
+
+func testKustomizationReplicasConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/basic/initial",
+	]
+
+	replicas {
+		name = "test"
+		count = 5
 	}
 }
 
