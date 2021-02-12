@@ -222,6 +222,62 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 					},
 				},
 			},
+			"vars": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"obj_ref": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"api_version": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"group": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"version": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"kind": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"name": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"namespace": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+								},
+							},
+						},
+						"field_ref": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"field_path": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 			"ids": &schema.Schema{
 				Type:     schema.TypeSet,
 				Computed: true,
@@ -422,6 +478,41 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			)
 
 			k.SecretGenerator = append(k.SecretGenerator, sa)
+		}
+	}
+
+	if d.Get("vars") != nil {
+		vs := d.Get("vars").([]interface{})
+		for i := range vs {
+			if vs[i] == nil {
+				continue
+			}
+
+			v := vs[i].(map[string]interface{})
+			kv := types.Var{}
+
+			kv.Name = v["name"].(string)
+
+			or := convertMapStringInterfaceToMapStringString(
+				v["obj_ref"].(map[string]interface{}),
+			)
+
+			kv.ObjRef = types.Target{}
+			kv.ObjRef.APIVersion = or["api_version"]
+			kv.ObjRef.Group = or["group"]
+			kv.ObjRef.Version = or["version"]
+			kv.ObjRef.Kind = or["kind"]
+			kv.ObjRef.Name = or["name"]
+			kv.ObjRef.Namespace = or["namespace"]
+
+			fr := convertMapStringInterfaceToMapStringString(
+				v["field_ref"].(map[string]interface{}),
+			)
+
+			kv.FieldRef = types.FieldSelector{}
+			kv.FieldRef.FieldPath = fr["field_path"]
+
+			k.Vars = append(k.Vars, kv)
 		}
 	}
 

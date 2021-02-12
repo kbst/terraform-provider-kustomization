@@ -33,6 +33,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "secret_generator.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "patches.#", "1"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "vars.#", "1"),
 
 					// Generated
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "0"),
@@ -71,6 +72,8 @@ data "kustomization_overlay" "test" {
 	secret_generator {}
 
 	patches {}
+
+	vars {}
 }
 `
 }
@@ -564,6 +567,63 @@ output "check_cm1" {
 
 output "check_cm2" {
 	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret2-h55cfd6gfg"]
+}
+`
+}
+
+//
+//
+// Test vars attr
+func TestDataSourceKustomizationOverlay_vars(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationVarsConfig(),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"test-basic\"}],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+			},
+		},
+	})
+}
+
+func testKustomizationVarsConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/basic/initial",
+	]
+
+	vars {
+		name = "TEST_VAR_NAMESPACE"
+		obj_ref = {
+			api_version = "v1"
+			kind = "Service"
+			name = "test"
+		}
+		field_ref = {
+			field_path = "metadata.namespace"
+		}
+	}
+
+	patches {
+		patch = <<-EOF
+			- op: add
+			  path: /spec/template/spec/containers/0/env
+			  value: [{"name": "TESTENV", "value": "$(TEST_VAR_NAMESPACE)"}]
+		EOF
+		target = {
+			group = "apps"
+			version = "v1"
+			kind = "Deployment"
+			name = "test"
+		}
+	}
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
 }
 `
 }
