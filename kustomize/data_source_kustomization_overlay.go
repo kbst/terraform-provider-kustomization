@@ -114,6 +114,60 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"patches": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"path": {
+							Type:     schema.TypeString,
+							Optional: true,
+							//ConflictsWith: []string{"patch"},
+						},
+						"patch": {
+							Type:     schema.TypeString,
+							Optional: true,
+							//ConflictsWith: []string{"path"},
+						},
+						"target": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"group": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"version": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"kind": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"name": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"namespace": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"label_selector": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"annotation_selector": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 			"replicas": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -274,6 +328,36 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			kimg.Digest = img["digest"].(string)
 
 			k.Images = append(k.Images, kimg)
+		}
+	}
+
+	if d.Get("patches") != nil {
+		ps := d.Get("patches").([]interface{})
+		for i := range ps {
+			if ps[i] == nil {
+				continue
+			}
+
+			p := ps[i].(map[string]interface{})
+			kp := types.Patch{}
+
+			kp.Path = p["path"].(string)
+			kp.Patch = p["patch"].(string)
+
+			t := convertMapStringInterfaceToMapStringString(
+				p["target"].(map[string]interface{}),
+			)
+
+			kp.Target = &types.Selector{}
+			kp.Target.Group = t["group"]
+			kp.Target.Version = t["version"]
+			kp.Target.Kind = t["kind"]
+			kp.Target.Name = t["name"]
+			kp.Target.Namespace = t["namespace"]
+			kp.Target.AnnotationSelector = t["annotation_selector"]
+			kp.Target.LabelSelector = t["label_selector"]
+
+			k.Patches = append(k.Patches, kp)
 		}
 	}
 

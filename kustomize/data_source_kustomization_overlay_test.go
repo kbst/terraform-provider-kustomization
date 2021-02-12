@@ -32,6 +32,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "replicas.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "secret_generator.#", "1"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "patches.#", "1"),
 
 					// Generated
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "0"),
@@ -68,6 +69,8 @@ data "kustomization_overlay" "test" {
 	resources = []
 
 	secret_generator {}
+
+	patches {}
 }
 `
 }
@@ -407,6 +410,67 @@ data "kustomization_overlay" "test" {
 
 output "check" {
 	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
+}
+`
+}
+
+//
+//
+// Test patches attr
+func TestDataSourceKustomizationOverlay_patches(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationPatchesConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_dep", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"true\"}],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("check_ingress", "{\"apiVersion\":\"networking.k8s.io/v1beta1\",\"kind\":\"Ingress\",\"metadata\":{\"annotations\":{\"nginx.ingress.kubernetes.io/rewrite-target\":\"/\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"rules\":[{\"http\":{\"paths\":[{\"backend\":{\"serviceName\":\"test\",\"servicePort\":80},\"path\":\"/newpath\"}]}}]}}"),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationPatchesConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/basic/initial",
+	]
+
+	patches {
+		path = "test_kustomizations/_test_files/deployment_patch_env.yaml"
+		target = {
+			label_selector = "app=test"
+		}
+	}
+
+	patches {
+		patch = <<-EOF
+			- op: replace
+			  path: /spec/rules/0/http/paths/0/path
+			  value: /newpath
+		EOF
+		target = {
+			group = "networking.k8s.io"
+			version = "v1beta1"
+			kind = "Ingress"
+			name = "test"
+			namespace = "test-basic"
+			annotation_selector = "nginx.ingress.kubernetes.io/rewrite-target"
+		}
+	}
+}
+
+output "check_dep" {
+	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
+}
+
+output "check_ingress" {
+	value = data.kustomization_overlay.test.manifests["networking.k8s.io_v1beta1_Ingress|test-basic|test"]
 }
 `
 }
