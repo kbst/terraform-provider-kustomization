@@ -27,6 +27,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "components.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "config_map_generator.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "crds.#", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "generators.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "generator_options.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "images.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "namespace", "test-overlay-basic"),
@@ -58,6 +59,8 @@ data "kustomization_overlay" "test" {
 	config_map_generator {}
 
 	crds = []
+
+	generators = []
 
 	generator_options {}
 
@@ -420,6 +423,37 @@ data "kustomization_overlay" "test" {
 	crds = [
 		"test_kustomizations/crd/initial/crd.yaml",
 	]
+}
+`
+}
+
+//
+//
+// Test generators attr
+func TestDataSourceKustomizationOverlay_generators(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_generators(),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"testcm-6ct58987ht\"}}"),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_generators() string {
+	return `
+data "kustomization_overlay" "test" {
+	generators = [
+		"test_kustomizations/_test_files/cmGenerator.yaml"
+	]
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|testcm-6ct58987ht"]
 }
 `
 }

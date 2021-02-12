@@ -1,0 +1,4 @@
+apiVersion: builtin
+kind: ConfigMapGenerator
+metadata:
+  name: testcm

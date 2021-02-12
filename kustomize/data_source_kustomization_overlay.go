@@ -124,6 +124,13 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
+			"generators": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 			"generator_options": &schema.Schema{
 				Type:     schema.TypeList,
 				MaxItems: 1,
@@ -450,6 +457,12 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 	if d.Get("crds") != nil {
 		k.Crds = convertListInterfaceToListString(
 			d.Get("crds").([]interface{}),
+		)
+	}
+
+	if d.Get("generators") != nil {
+		k.Generators = convertListInterfaceToListString(
+			d.Get("generators").([]interface{}),
 		)
 	}
 
