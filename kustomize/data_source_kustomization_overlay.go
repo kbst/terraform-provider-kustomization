@@ -54,6 +54,12 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 	return &schema.Resource{
 		Read: kustomizationOverlay,
 
+		// support almost all attributes available in a Kustomization
+		//
+		// not implemented:
+		// Bases (deprecated)
+		// Configurations (incompatible with plugins)
+		// Validators (requires alpha plugins enabled, we only enable built-in plugins)
 		Schema: map[string]*schema.Schema{
 			"common_annotations": &schema.Schema{
 				Type:     schema.TypeMap,
