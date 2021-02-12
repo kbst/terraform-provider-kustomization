@@ -27,6 +27,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "components.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "config_map_generator.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "crds.#", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "generator_options.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "images.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "namespace", "test-overlay-basic"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "replicas.#", "1"),
@@ -57,6 +58,8 @@ data "kustomization_overlay" "test" {
 	config_map_generator {}
 
 	crds = []
+
+	generator_options {}
 
 	images {}
 
@@ -200,7 +203,7 @@ func TestDataSourceKustomizationOverlay_configMapGenerator(t *testing.T) {
 			{
 				Config: testKustomizationConfigMapGeneratorConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap1-gkfb9fdgch\"}}"),
+					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap1\"}}"),
 					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"ENV1\":\"VALUE1\",\"ENV2\":\"VALUE2\",\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\",\"properties.env\":\"ENV1=VALUE1\\nENV2=VALUE2\\n\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap2-5tgmgc9cmf\"}}"),
 				),
 			},
@@ -218,6 +221,10 @@ data "kustomization_overlay" "test" {
 			"KEY1=VALUE1",
 			"KEY2=VALUE2"
 		]
+
+		options {
+			disable_name_suffix_hash = true
+		}
 	}
 
 	config_map_generator {
@@ -236,7 +243,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check_cm1" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap1-gkfb9fdgch"]
+	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap1"]
 }
 
 output "check_cm2" {
@@ -419,6 +426,62 @@ data "kustomization_overlay" "test" {
 
 //
 //
+// Test generator_options attr
+func TestDataSourceKustomizationOverlay_generator_options(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationConfig_generator_options(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_configmap", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{\"test-annotation\":\"test\"},\"labels\":{\"test-label\":\"test\"},\"name\":\"test-configmap\"}}"),
+					resource.TestCheckOutput("check_secret", "{\"apiVersion\":\"v1\",\"data\":{},\"kind\":\"Secret\",\"metadata\":{\"annotations\":{\"test-annotation\":\"test\"},\"labels\":{\"test-label\":\"test\"},\"name\":\"test-secret\"},\"type\":\"Opaque\"}"),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationConfig_generator_options() string {
+	return `
+data "kustomization_overlay" "test" {
+	generator_options {
+		labels = {
+			test-label = "test"
+		}
+
+		annotations = {
+			test-annotation = "test"
+		}
+
+		disable_name_suffix_hash = true
+	}
+
+	config_map_generator {
+		name = "test-configmap"
+		literals = []
+	}
+
+	secret_generator {
+		name = "test-secret"
+		literals = []
+	}
+}
+
+output "check_configmap" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap"]
+}
+
+output "check_secret" {
+	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret"]
+}
+`
+}
+
+//
+//
 // Test images attr
 func TestDataSourceKustomizationOverlay_images(t *testing.T) {
 
@@ -564,7 +627,7 @@ func TestDataSourceKustomizationOverlay_secretGenerator(t *testing.T) {
 			{
 				Config: testKustomizationSecretGeneratorConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret1-ht6gmk5252\"},\"type\":\"Opaque\"}"),
+					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret1\"},\"type\":\"Opaque\"}"),
 					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"ENV1\":\"VkFMVUUx\",\"ENV2\":\"VkFMVUUy\",\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\",\"properties.env\":\"RU5WMT1WQUxVRTEKRU5WMj1WQUxVRTIK\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret2-h55cfd6gfg\"},\"type\":\"Opaque\"}"),
 				),
 			},
@@ -582,6 +645,10 @@ data "kustomization_overlay" "test" {
 			"KEY1=VALUE1",
 			"KEY2=VALUE2"
 		]
+
+		options {
+			disable_name_suffix_hash = true
+		}
 	}
 
 	secret_generator {
@@ -600,7 +667,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check_cm1" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret1-ht6gmk5252"]
+	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret1"]
 }
 
 output "check_cm2" {

@@ -14,6 +14,42 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
+func getGeneratorOptionsSchema() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"labels": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"annotations": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"disable_name_suffix_hash": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+		},
+	}
+}
+
+func getGeneratorOptions(o map[string]interface{}) *types.GeneratorOptions {
+	g := &types.GeneratorOptions{}
+	g.Labels = convertMapStringInterfaceToMapStringString(
+		o["labels"].(map[string]interface{}),
+	)
+
+	g.Annotations = convertMapStringInterfaceToMapStringString(
+		o["annotations"].(map[string]interface{}),
+	)
+
+	g.DisableNameSuffixHash = o["disable_name_suffix_hash"].(bool)
+
+	return g
+}
+
 func dataSourceKustomizationOverlay() *schema.Resource {
 	return &schema.Resource{
 		Read: kustomizationOverlay,
@@ -72,6 +108,12 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							Optional: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
+						"options": {
+							Type:     schema.TypeList,
+							MaxItems: 1,
+							Optional: true,
+							Elem:     getGeneratorOptionsSchema(),
+						},
 					},
 				},
 			},
@@ -81,6 +123,12 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+			},
+			"generator_options": &schema.Schema{
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem:     getGeneratorOptionsSchema(),
 			},
 			"images": &schema.Schema{
 				Type:     schema.TypeList,
@@ -231,6 +279,12 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							Optional: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
+						"options": {
+							Type:     schema.TypeList,
+							MaxItems: 1,
+							Optional: true,
+							Elem:     getGeneratorOptionsSchema(),
+						},
 					},
 				},
 			},
@@ -378,6 +432,11 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 				cmg["files"].([]interface{}),
 			)
 
+			o := cmg["options"].([]interface{})
+			if len(o) == 1 && o[0] != nil {
+				cma.Options = getGeneratorOptions(o[0].(map[string]interface{}))
+			}
+
 			k.ConfigMapGenerator = append(k.ConfigMapGenerator, cma)
 		}
 	}
@@ -392,6 +451,15 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 		k.Crds = convertListInterfaceToListString(
 			d.Get("crds").([]interface{}),
 		)
+	}
+
+	if d.Get("generator_options") != nil {
+		gos := d.Get("generator_options").([]interface{})
+
+		if len(gos) == 1 && gos[0] != nil {
+			o := gos[0].(map[string]interface{})
+			k.GeneratorOptions = getGeneratorOptions(o)
+		}
 	}
 
 	if d.Get("images") != nil {
@@ -505,6 +573,11 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			sa.FileSources = convertListInterfaceToListString(
 				s["files"].([]interface{}),
 			)
+
+			o := s["options"].([]interface{})
+			if len(o) == 1 && o[0] != nil {
+				sa.Options = getGeneratorOptions(o[0].(map[string]interface{}))
+			}
 
 			k.SecretGenerator = append(k.SecretGenerator, sa)
 		}
