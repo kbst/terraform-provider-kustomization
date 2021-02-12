@@ -234,6 +234,13 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 					},
 				},
 			},
+			"transformers": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 			"vars": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -373,6 +380,12 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 
 			k.ConfigMapGenerator = append(k.ConfigMapGenerator, cma)
 		}
+	}
+
+	if d.Get("transformers") != nil {
+		k.Transformers = convertListInterfaceToListString(
+			d.Get("transformers").([]interface{}),
+		)
 	}
 
 	if d.Get("crds") != nil {

@@ -33,6 +33,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "resources.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "secret_generator.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "patches.#", "1"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "transformers.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "vars.#", "1"),
 
 					// Generated
@@ -72,6 +73,8 @@ data "kustomization_overlay" "test" {
 	secret_generator {}
 
 	patches {}
+
+	transformers = []
 
 	vars {}
 }
@@ -346,6 +349,41 @@ output "check" {
 	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-basic"]
 }
 
+`
+}
+
+//
+//
+// Test transformers attr
+func TestDataSourceKustomizationOverlay_transformers(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_transformers(),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\",\"test.example.com/test-label\":\"test-value\"},\"name\":\"test\",\"namespace\":\"test-transformer-config\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_transformers() string {
+	return `
+data "kustomization_overlay" "test" {
+	transformers = [
+		"test_kustomizations/transformer_configs/modified/label.yaml",
+	]
+
+	resources = [
+		"test_kustomizations/transformer_configs/initial",
+	]
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-transformer-config|test"]
+}
 `
 }
 
