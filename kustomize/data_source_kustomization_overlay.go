@@ -45,6 +45,10 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"namespace": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 						"behavior": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -200,6 +204,14 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"namespace": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"behavior": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 						"type": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -343,6 +355,7 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			cma := types.ConfigMapArgs{}
 
 			cma.Name = cmg["name"].(string)
+			cma.Namespace = cmg["namespace"].(string)
 
 			cma.Behavior = cmg["behavior"].(string)
 
@@ -463,6 +476,9 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			sa := types.SecretArgs{}
 
 			sa.Name = s["name"].(string)
+			sa.Namespace = s["namespace"].(string)
+
+			sa.Behavior = s["behavior"].(string)
 			sa.Type = s["type"].(string)
 
 			sa.EnvSources = convertListInterfaceToListString(
