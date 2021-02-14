@@ -517,14 +517,16 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 				p["target"].(map[string]interface{}),
 			)
 
-			kp.Target = &types.Selector{}
-			kp.Target.Group = t["group"]
-			kp.Target.Version = t["version"]
-			kp.Target.Kind = t["kind"]
-			kp.Target.Name = t["name"]
-			kp.Target.Namespace = t["namespace"]
-			kp.Target.AnnotationSelector = t["annotation_selector"]
-			kp.Target.LabelSelector = t["label_selector"]
+			if len(t) > 0 {
+				kp.Target = &types.Selector{}
+				kp.Target.Group = t["group"]
+				kp.Target.Version = t["version"]
+				kp.Target.Kind = t["kind"]
+				kp.Target.Name = t["name"]
+				kp.Target.Namespace = t["namespace"]
+				kp.Target.AnnotationSelector = t["annotation_selector"]
+				kp.Target.LabelSelector = t["label_selector"]
+			}
 
 			k.Patches = append(k.Patches, kp)
 		}
