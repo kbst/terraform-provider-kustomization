@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/api/konfig"
 )
 
 //
@@ -767,6 +770,27 @@ output "check" {
 	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
 }
 `
+}
+
+//
+//
+// Test module
+func TestDataSourceKustomizationOverlay_conflict(t *testing.T) {
+	fSys := filesys.MakeFsOnDisk()
+	for _, n := range konfig.RecognizedKustomizationFileNames() {
+		fSys.WriteFile(n, []byte{})
+
+		err := refuseExistingKustomization(fSys)
+		assert.EqualErrorf(
+			t,
+			err,
+			fmt.Sprintf("buildKustomizeOverlay: Can not build dynamic overlay, found %q in working directory.", n),
+			"",
+			nil,
+		)
+
+		fSys.RemoveAll(n)
+	}
 }
 
 //

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 
 	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/api/konfig"
 	"sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
@@ -642,6 +643,15 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 	return k
 }
 
+func refuseExistingKustomization(fSys filesys.FileSystem) error {
+	for _, n := range konfig.RecognizedKustomizationFileNames() {
+		if fSys.Exists(n) {
+			return fmt.Errorf("buildKustomizeOverlay: Can not build dynamic overlay, found %q in working directory.", n)
+		}
+	}
+	return nil
+}
+
 func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 	k := getKustomization(d)
 
@@ -652,6 +662,12 @@ func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 	ye.Encode(k)
 	ye.Close()
 	data, _ := ioutil.ReadAll(io.Reader(&b))
+
+	// error if the current working directory is already a Kustomization
+	err := refuseExistingKustomization(fSys)
+	if err != nil {
+		return err
+	}
 
 	fSys.WriteFile("Kustomization", data)
 	defer fSys.RemoveAll("Kustomization")
