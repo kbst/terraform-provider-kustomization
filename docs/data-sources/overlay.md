@@ -503,5 +503,7 @@ data "kustomization_overlay" "example" {
 
 ## Attribute Reference
 
-- `ids` - Set of Kubernetes resource IDs.
-- `manifests` - JSON encoded Kubernetes resource manifests.
+- `ids` - Set of Kustomize resource IDs.
+- `ids_namespace_not_set` - Subset of `ids` without a namespace set.
+- `ids_namespace_set` - Subset of `ids` with a namespace set.
+- `manifests` - Map of JSON encoded Kubernetes resource manifests by ID.

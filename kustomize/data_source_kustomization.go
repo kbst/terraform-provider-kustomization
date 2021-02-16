@@ -94,7 +94,10 @@ func runKustomizeBuild(fSys filesys.FileSystem, path string) (rm resmap.ResMap, 
 }
 
 func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap) error {
-	d.Set("ids", flattenKustomizationIDs(rm))
+	ids, nsNotSet, nsSet := flattenKustomizationIDs(rm)
+	d.Set("ids", ids)
+	d.Set("ids_namespace_not_set", nsNotSet)
+	d.Set("ids_namespace_set", nsSet)
 
 	resources, err := flattenKustomizationResources(rm)
 	if err != nil {

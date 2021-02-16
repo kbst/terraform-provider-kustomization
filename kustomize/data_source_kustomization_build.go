@@ -23,6 +23,18 @@ func dataSourceKustomization() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      idSetHash,
 			},
+			"ids_namespace_not_set": &schema.Schema{
+				Type:     schema.TypeSet,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set:      idSetHash,
+			},
+			"ids_namespace_set": &schema.Schema{
+				Type:     schema.TypeSet,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set:      idSetHash,
+			},
 			"manifests": &schema.Schema{
 				Type:     schema.TypeMap,
 				Computed: true,
