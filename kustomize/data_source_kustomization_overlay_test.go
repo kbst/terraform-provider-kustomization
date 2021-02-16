@@ -45,6 +45,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 
 					// Generated
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids_prio.#", "3"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "0"),
 				),
 			},

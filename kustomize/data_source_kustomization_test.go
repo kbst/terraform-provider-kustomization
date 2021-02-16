@@ -10,19 +10,22 @@ import (
 
 func TestDeterminePrefix(t *testing.T) {
 	for _, id := range residListFirst {
-		p := determinePrefix(id)
+		gvk := resid.GvkFromString(id)
+		p := determinePrefix(gvk)
 		e := uint32(1)
 		assert.Equal(t, e, p, nil)
 	}
 
 	for _, id := range residListDefault {
-		p := determinePrefix(id)
+		gvk := resid.GvkFromString(id)
+		p := determinePrefix(gvk)
 		e := uint32(5)
 		assert.Equal(t, e, p, nil)
 	}
 
 	for _, id := range residListLast {
-		p := determinePrefix(id)
+		gvk := resid.GvkFromString(id)
+		p := determinePrefix(gvk)
 		e := uint32(9)
 		assert.Equal(t, e, p, nil)
 	}

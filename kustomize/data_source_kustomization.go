@@ -30,9 +30,7 @@ func getIDFromResources(rm resmap.ResMap) (s string, err error) {
 	return s, nil
 }
 
-func determinePrefix(id string) (p uint32) {
-	gvk := resid.GvkFromString(id)
-
+func determinePrefix(gvk resid.Gvk) (p uint32) {
 	// Default prefix to 5
 	p = 5
 
@@ -74,7 +72,8 @@ func prefixHash(p uint32, h uint32) int {
 func idSetHash(v interface{}) int {
 	id := v.(string)
 
-	p := determinePrefix(id)
+	gvk := resid.GvkFromString(id)
+	p := determinePrefix(gvk)
 	h := crc32.ChecksumIEEE([]byte(id))
 
 	return prefixHash(p, h)
@@ -94,7 +93,9 @@ func runKustomizeBuild(fSys filesys.FileSystem, path string) (rm resmap.ResMap, 
 }
 
 func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap) error {
-	d.Set("ids", flattenKustomizationIDs(rm))
+	ids, idsPrio := flattenKustomizationIDs(rm)
+	d.Set("ids", ids)
+	d.Set("ids_prio", idsPrio)
 
 	resources, err := flattenKustomizationResources(rm)
 	if err != nil {
