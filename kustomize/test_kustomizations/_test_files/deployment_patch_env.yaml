@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test
+  name: test
+spec:
+  template:
+    spec:
+      containers:
+      - name: nginx
+        env:
+        - name: TESTENV
+          value: "true"

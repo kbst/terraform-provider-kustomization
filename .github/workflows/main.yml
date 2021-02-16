@@ -189,17 +189,17 @@ jobs:
 
     - name: 'Kubectl apply'
       run: |
-        kustomize build test_kustomizations/basic/initial | kubectl apply -f -
+        kustomize build kustomize/test_kustomizations/basic/initial | kubectl apply -f -
 
     - name: 'Terraform Init'
       run: terraform init
 
     - name: 'Terraform Import'
       run: |
-        terraform import 'kustomization_resource.test["~G_v1_Namespace|~X|test-basic"]' '~G_v1_Namespace|~X|test-basic'
-        terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
-        terraform import 'kustomization_resource.test["~G_v1_Service|test-basic|test"]' '~G_v1_Service|test-basic|test'
-        terraform import 'kustomization_resource.test["networking.k8s.io_v1beta1_Ingress|test-basic|test"]' 'networking.k8s.io_v1beta1_Ingress|test-basic|test'
+        terraform import 'kustomization_resource.from_build["~G_v1_Namespace|~X|test-basic"]' '~G_v1_Namespace|~X|test-basic'
+        terraform import 'kustomization_resource.from_build["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
+        terraform import 'kustomization_resource.from_build["~G_v1_Service|test-basic|test"]' '~G_v1_Service|test-basic|test'
+        terraform import 'kustomization_resource.from_build["networking.k8s.io_v1beta1_Ingress|test-basic|test"]' 'networking.k8s.io_v1beta1_Ingress|test-basic|test'
 
     - name: 'Terraform Apply'
       run: terraform apply --auto-approve

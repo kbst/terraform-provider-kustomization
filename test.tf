@@ -11,11 +11,25 @@ terraform {
 }
 
 data "kustomization_build" "test" {
-  path = "test_kustomizations/basic/initial"
+  path = "kustomize/test_kustomizations/basic/initial"
 }
 
-resource "kustomization_resource" "test" {
+resource "kustomization_resource" "from_build" {
   for_each = data.kustomization_build.test.ids
 
   manifest = data.kustomization_build.test.manifests[each.value]
+}
+
+data "kustomization_overlay" "test" {
+  namespace = "test-overlay"
+
+  resources = [
+    "kustomize/test_kustomizations/basic/initial"
+  ]
+}
+
+resource "kustomization_resource" "from_overlay" {
+  for_each = data.kustomization_overlay.test.ids
+
+  manifest = data.kustomization_overlay.test.manifests[each.value]
 }

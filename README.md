@@ -14,53 +14,14 @@ It also uses [server side dry runs](https://kubernetes.io/docs/reference/using-a
 
 As such it can be useful both to replace kustomize/kubectl integrated into a Terraform configuration as a provisioner as well as standalone `kubectl diff/apply` steps in CI/CD.
 
-## Requirements
+## Using the Provider
+
+The Terraform provider for Kustomize is available from the [Terraform registry](https://registry.terraform.io/providers/kbst/kustomization/latest). Please refert to the [documentation](https://registry.terraform.io/providers/kbst/kustomization/latest/docs) for information on how to use the `kustomization_build` and `kustomization_overlay` data sources, or the `kustomization_resource` resource.
+
+## Development Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) 0.12.x
 - [Go](https://golang.org/doc/install) 1.13 (to build the provider plugin)
-
-## Usage
-
-```hcl
-data "kustomization" "example" {
-  # path to kustomization directory
-  path = "test_kustomizations/basic/initial"
-}
-
-resource "kustomization_resource" "example" {
-  for_each = data.kustomization.example.ids
-
-  manifest = data.kustomization.example.manifests[each.value]
-}
-
-```
-
-## Configuring the provider
-
-```hcl
-provider "kustomization" {
-  # optional path to kubeconfig file
-  # falls back to KUBECONFIG or KUBE_CONFIG env var
-  # or finally '~/.kube/config'
-  kubeconfig_path = "/path/to/kubeconfig/file"
-
-  # optional raw kubeconfig string
-  # overwrites kubeconfig_path
-  kubeconfig_raw = data.template_file.kubeconfig.rendered
-
-  # optional context to use in kubeconfig with multiple contexts
-  # if unspecified, the default (current) context is used
-  context = "my-context"
-}
-```
-
-## State import for kustomization_resource
-
-To import existing Kubernetes resources into the Terraform state for above usage example, use a command like below and replace `apps_v1_Deployment|test-basic|test` accordingly. Please note the single quotes required for most shells.
-
-```
-terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
-```
 
 ## Building and Developing the Provider
 

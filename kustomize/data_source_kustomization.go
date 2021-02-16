@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-
 	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resid"
@@ -29,30 +28,6 @@ func getIDFromResources(rm resmap.ResMap) (s string, err error) {
 	s = hex.EncodeToString(h.Sum(nil))
 
 	return s, nil
-}
-
-func dataSourceKustomization() *schema.Resource {
-	return &schema.Resource{
-		Read: kustomizationBuild,
-
-		Schema: map[string]*schema.Schema{
-			"path": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"ids": &schema.Schema{
-				Type:     schema.TypeSet,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Set:      idSetHash,
-			},
-			"manifests": &schema.Schema{
-				Type:     schema.TypeMap,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
-		},
-	}
 }
 
 func determinePrefix(id string) (p uint32) {
@@ -105,8 +80,7 @@ func idSetHash(v interface{}) int {
 	return prefixHash(p, h)
 }
 
-func runKustomizeBuild(path string) (rm resmap.ResMap, err error) {
-	fSys := filesys.MakeFsOnDisk()
+func runKustomizeBuild(fSys filesys.FileSystem, path string) (rm resmap.ResMap, err error) {
 	opts := krusty.MakeDefaultOptions()
 
 	k := krusty.MakeKustomizer(fSys, opts)
@@ -119,13 +93,7 @@ func runKustomizeBuild(path string) (rm resmap.ResMap, err error) {
 	return rm, nil
 }
 
-func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
-	path := d.Get("path").(string)
-	rm, err := runKustomizeBuild(path)
-	if err != nil {
-		return fmt.Errorf("kustomizationBuild: %s", err)
-	}
-
+func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap) error {
 	d.Set("ids", flattenKustomizationIDs(rm))
 
 	resources, err := flattenKustomizationResources(rm)
