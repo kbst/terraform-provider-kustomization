@@ -23,6 +23,16 @@ func dataSourceKustomization() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      idSetHash,
 			},
+			"ids_prio": &schema.Schema{
+				Type:     schema.TypeList,
+				Computed: true,
+				MinItems: 3,
+				MaxItems: 3,
+				Elem: &schema.Schema{
+					Type: schema.TypeSet,
+					Set:  idSetHash,
+				},
+			},
 			"manifests": &schema.Schema{
 				Type:     schema.TypeMap,
 				Computed: true,
