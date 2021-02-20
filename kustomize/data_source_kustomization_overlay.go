@@ -665,13 +665,16 @@ func refuseExistingKustomization(fSys filesys.FileSystem) error {
 func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 	k := getKustomization(d)
 
-	fSys := filesys.MakeFsOnDisk()
-
 	var b bytes.Buffer
 	ye := yaml.NewEncoder(io.Writer(&b))
 	ye.Encode(k)
 	ye.Close()
 	data, _ := ioutil.ReadAll(io.Reader(&b))
+
+	fSys := makeOverlayFS(
+		filesys.MakeFsInMemory(),
+		filesys.MakeFsOnDisk(),
+	)
 
 	// error if the current working directory is already a Kustomization
 	err := refuseExistingKustomization(fSys)
@@ -679,8 +682,8 @@ func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	fSys.WriteFile("Kustomization", data)
-	defer fSys.RemoveAll("Kustomization")
+	fSys.WriteFile(KFILENAME, data)
+	defer fSys.RemoveAll(KFILENAME)
 
 	rm, err := runKustomizeBuild(fSys, ".")
 	if err != nil {
