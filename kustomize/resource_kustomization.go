@@ -247,25 +247,20 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 				continue
 			}
 
-			//
-			// Find out if the request is invalid because a field is immutable
-			// if immutable is the only reason, force a delete and recreate plan
+			// Handle specific invalid errors
 			if k8serrors.IsInvalid(err) {
 				as := err.(k8serrors.APIStatus).Status()
 
-				for _, c := range as.Details.Causes {
-					if strings.HasSuffix(c.Message, ": field is immutable") != true {
-						// if there is any error that is not due to an immutable field
-						// expose to user to let them fix it first
-						return logErrorForResource(
-							u,
-							fmt.Errorf("patch failed '%s': %s", patchType, err),
-						)
-					}
+				// if there is exactly 1 cause and that cause is due to an immutable field force a delete and re-create plan
+				if len(as.Details.Causes) == 1 && strings.HasSuffix(as.Details.Causes[0].Message, ": field is immutable") == true {
+					d.ForceNew("manifest")
+					return nil
 				}
 
-				d.ForceNew("manifest")
-				return nil
+				// if StrategicMergePatchType fall back to MergePatchType before returning an error to the user
+				if patchType == k8stypes.StrategicMergePatchType {
+					continue
+				}
 			}
 
 			return logErrorForResource(
@@ -376,10 +371,8 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 			Namespace(u.GetNamespace()).
 			Patch(context.TODO(), u.GetName(), patchType, patch, k8smetav1.PatchOptions{})
 		if err != nil {
-			//
-			// If the resource kind does not support StrategicMergePatchType
-			// fall back to MergePatchType and retry
-			if k8serrors.IsUnsupportedMediaType(err) {
+			// if either StrategicMergePatchType is not supported or returns invalid fall back to MergePatchType and retry
+			if k8serrors.IsUnsupportedMediaType(err) || k8serrors.IsInvalid(err) {
 				continue
 			}
 
