@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 func kustomizationResource() *schema.Resource {
@@ -251,10 +252,21 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 			if k8serrors.IsInvalid(err) {
 				as := err.(k8serrors.APIStatus).Status()
 
-				// if there is exactly 1 cause and that cause is due to an immutable field force a delete and re-create plan
-				if len(as.Details.Causes) == 1 && strings.HasSuffix(as.Details.Causes[0].Message, ": field is immutable") == true {
-					d.ForceNew("manifest")
-					return nil
+				// ForceNew only when exact single cause
+				if len(as.Details.Causes) == 1 {
+					msg := as.Details.Causes[0].Message
+
+					// if cause is immutable field force a delete and re-create plan
+					if k8serrors.HasStatusCause(err, k8smetav1.CauseTypeFieldValueInvalid) && strings.HasSuffix(msg, ": field is immutable") == true {
+						d.ForceNew("manifest")
+						return nil
+					}
+
+					// if cause is statefulset forbidden fields error force a delete and re-create plan
+					if k8serrors.HasStatusCause(err, k8smetav1.CauseType(field.ErrorTypeForbidden)) && strings.HasPrefix(msg, "Forbidden: updates to statefulset spec for fields") == true {
+						d.ForceNew("manifest")
+						return nil
+					}
 				}
 
 				// if StrategicMergePatchType fall back to MergePatchType before returning an error to the user
