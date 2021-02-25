@@ -517,7 +517,14 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
+	lac := getLastAppliedConfig(resp)
+	if lac == "" {
+		return nil, logError(
+			fmt.Errorf("apiVersion: %q, kind: %q, namespace: %q, name: %q: can not import resources without %q annotation", gvk.GroupVersion(), gvk.Kind, namespace, name, lastAppliedConfig),
+		)
+	}
+
+	d.Set("manifest", lac)
 
 	return []*schema.ResourceData{d}, nil
 }
