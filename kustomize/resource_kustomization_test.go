@@ -199,6 +199,65 @@ resource "kustomization_resource" "dep1" {
 
 //
 //
+// Update_Merge_Fallback Test
+func TestAccResourceKustomization_updateMergeFallback(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial config with env set by a value
+			{
+				Config: testAccResourceKustomizationConfig_updateMergeFallbackInitial("test_kustomizations/update_merge_fallback/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.dep", "id"),
+				),
+			},
+			//
+			//
+			// Applying modified config replacing env value with valueFrom
+			{
+				Config: testAccResourceKustomizationConfig_updateMergeFallbackModified("test_kustomizations/update_merge_fallback/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.dep", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.cm", "id"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_updateMergeFallbackInitial(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_Namespace|~X|test-update-merge-fallback"]
+}
+
+resource "kustomization_resource" "svc" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_Service|test-update-merge-fallback|test"]
+}
+
+resource "kustomization_resource" "dep" {
+	manifest = data.kustomization_build.test.manifests["apps_v1_Deployment|test-update-merge-fallback|test"]
+}
+`
+}
+
+func testAccResourceKustomizationConfig_updateMergeFallbackModified(path string) string {
+	return testAccResourceKustomizationConfig_updateMergeFallbackInitial(path) + `
+resource "kustomization_resource" "cm" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_ConfigMap|test-update-merge-fallback|test-envfrom-kmdg664296"]
+}
+`
+}
+
+//
+//
 // Update_Recreate Test
 func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 
