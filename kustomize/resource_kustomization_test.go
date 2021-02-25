@@ -331,6 +331,50 @@ resource "kustomization_resource" "dep1" {
 
 //
 //
+// Update_Recreate_StatefulSet Test
+func TestAccResourceKustomization_updateRecreateStatefulSet(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial statefulset
+			{
+				Config: testAccResourceKustomizationConfig_updateRecreateStatefulSet("test_kustomizations/update_recreate_statefulset/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.ss", "id"),
+				),
+			},
+			//
+			//
+			// Applying modified statefulset that requires a destroy and recreate
+			{
+				Config: testAccResourceKustomizationConfig_updateRecreateStatefulSet("test_kustomizations/update_recreate_statefulset/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.ss", "id"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_updateRecreateStatefulSet(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_Namespace|~X|test-update-recreate-statefulset"]
+}
+
+resource "kustomization_resource" "ss" {
+	manifest = data.kustomization_build.test.manifests["apps_v1_StatefulSet|test-update-recreate-statefulset|test"]
+}
+`
+}
+
+//
+//
 // CRD Test
 func TestAccResourceKustomization_crd(t *testing.T) {
 
