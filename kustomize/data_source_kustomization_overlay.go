@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
@@ -671,13 +672,14 @@ func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 	ye.Close()
 	data, _ := ioutil.ReadAll(io.Reader(&b))
 
-	fSys := makeOverlayFS(
-		filesys.MakeFsInMemory(),
-		filesys.MakeFsOnDisk(),
-	)
+	fSys, tmp, err := makeOverlayFS(filesys.MakeFsOnDisk())
+	defer os.RemoveAll(tmp)
+	if err != nil {
+		return err
+	}
 
 	// error if the current working directory is already a Kustomization
-	err := refuseExistingKustomization(fSys)
+	err = refuseExistingKustomization(fSys)
 	if err != nil {
 		return err
 	}

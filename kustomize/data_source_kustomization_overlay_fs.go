@@ -1,9 +1,9 @@
 package kustomize
 
 import (
-	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
-	"strings"
 
 	"sigs.k8s.io/kustomize/api/filesys"
 )
@@ -13,108 +13,110 @@ var KFILENAME string = "Kustomization"
 var _ filesys.FileSystem = overlayFileSystem{}
 
 type overlayFileSystem struct {
-	upper filesys.FileSystem
-	lower filesys.FileSystem
+	fs      filesys.FileSystem
+	kfpReal string
+	kfpVirt string
 }
 
-// When two kustmization_overlay data sources are defined in the same root module the shared
-// file system prevents parallel execution.
-// This filesys.FileSystem implementation solves this by handling the dynamic Kustomization in memory.
-func makeOverlayFS(upper filesys.FileSystem, lower filesys.FileSystem) filesys.FileSystem {
-	return overlayFileSystem{
-		upper: upper,
-		lower: lower,
+// When two kustmization_overlay data sources are defined in the same root module
+// the shared file system prevents parallel execution.
+// This filesys.FileSystem implementation solves this
+// by handling the dynamic Kustomization in a temp directory.
+func makeOverlayFS(fs filesys.FileSystem) (ofs filesys.FileSystem, tmp string, err error) {
+	tmp, err = ioutil.TempDir("", "terraform-provider-kustomization-*")
+	if err != nil {
+		return ofs, tmp, err
 	}
+	kfpReal := filepath.Join(tmp, KFILENAME)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ofs, tmp, err
+	}
+	kfpVirt := filepath.Join(cwd, KFILENAME)
+
+	ofs = overlayFileSystem{
+		fs:      fs,
+		kfpReal: kfpReal,
+		kfpVirt: kfpVirt,
+	}
+
+	return ofs, tmp, err
 }
 
 func (ofs overlayFileSystem) Create(name string) (filesys.File, error) {
-	return ofs.upper.Create(name)
+	return ofs.fs.Create(name)
 }
 
 func (ofs overlayFileSystem) Mkdir(name string) error {
-	return ofs.upper.Mkdir(name)
+	return ofs.fs.Mkdir(name)
 }
 
 func (ofs overlayFileSystem) MkdirAll(name string) error {
-	return ofs.upper.MkdirAll(name)
+	return ofs.fs.MkdirAll(name)
 }
 
 func (ofs overlayFileSystem) RemoveAll(name string) error {
-	return ofs.upper.RemoveAll(name)
+	return ofs.fs.RemoveAll(name)
 }
 
 func (ofs overlayFileSystem) Open(name string) (filesys.File, error) {
-	of, err := ofs.lower.Open(name)
-
-	if err != nil {
-		return ofs.upper.Open(name)
-	}
-
-	return of, err
+	return ofs.fs.Open(name)
 }
 
 func (ofs overlayFileSystem) CleanedAbs(path string) (filesys.ConfirmedDir, string, error) {
-	cd, n, err := ofs.lower.CleanedAbs(path)
-
-	if err != nil && strings.HasSuffix(path, KFILENAME) {
-		cd, _, err = ofs.lower.CleanedAbs(".")
+	if path == ofs.kfpVirt {
+		// if the path we're looking for is our virtual Kustomization file
+		// fake a correct CleanedAbs response
+		cd, _, err := ofs.fs.CleanedAbs(".")
+		if err != nil {
+			return "", "", err
+		}
 		return cd, KFILENAME, err
 	}
 
-	return cd, n, err
+	return ofs.fs.CleanedAbs(path)
 }
 
 func (ofs overlayFileSystem) Exists(name string) bool {
-	onDisk := ofs.lower.Exists(name)
+	ex := ofs.fs.Exists(name)
 
-	if onDisk == false {
-		return ofs.upper.Exists(name)
+	if ex == false && name == ofs.kfpVirt {
+		return ofs.fs.Exists(ofs.kfpReal)
 	}
 
-	return onDisk
+	return ex
 }
 
 func (ofs overlayFileSystem) Glob(pattern string) ([]string, error) {
-	lfs, err := ofs.lower.Glob(pattern)
-	if err != nil {
-		return lfs, err
-	}
-
-	// Glob only errors if the pattern is invalid
-	ufs, _ := ofs.lower.Glob(pattern)
-
-	return append(lfs, ufs...), nil
-
+	return ofs.fs.Glob(pattern)
 }
 
 func (ofs overlayFileSystem) IsDir(name string) bool {
-	exl := ofs.lower.IsDir(name)
-
-	if exl == false {
-		return ofs.upper.IsDir(name)
-	}
-
-	return exl
+	return ofs.fs.IsDir(name)
 }
 
 func (ofs overlayFileSystem) ReadFile(name string) ([]byte, error) {
-	d, err := ofs.lower.ReadFile(name)
-
-	if err != nil && strings.HasSuffix(name, KFILENAME) {
-		return ofs.upper.ReadFile(KFILENAME)
+	if name == ofs.kfpVirt {
+		return ofs.fs.ReadFile(ofs.kfpReal)
 	}
 
-	return d, err
+	return ofs.fs.ReadFile(name)
 }
 
 func (ofs overlayFileSystem) WriteFile(name string, c []byte) error {
-	if ofs.lower.Exists(name) {
-		return fmt.Errorf("OverlayFS: %q already exists in lower FS.", name)
+	abs, err := filepath.Abs(name)
+	if err != nil {
+		return err
 	}
 
-	return ofs.upper.WriteFile(name, c)
+	if abs == ofs.kfpVirt {
+		return ofs.fs.WriteFile(ofs.kfpReal, c)
+	}
+
+	return ofs.fs.WriteFile(name, c)
 }
 
 func (ofs overlayFileSystem) Walk(path string, walkFn filepath.WalkFunc) error {
-	return ofs.lower.Walk(path, walkFn)
+	return ofs.fs.Walk(path, walkFn)
 }
