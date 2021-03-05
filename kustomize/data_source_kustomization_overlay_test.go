@@ -815,10 +815,11 @@ func TestDataSourceKustomizationOverlay_module(t *testing.T) {
 }
 
 func testKustomizationOverlayConfig_module() string {
-	modulePath, _ := filepath.Abs("test_module")
+	absPath, _ := filepath.Abs("test_module")
+	modulePath := filepath.ToSlash(absPath)
 	return fmt.Sprintf(`
 module "test" {
-	source = "%s"
+	source = %q
 
 	common_annotations = {
 		test-annotation = "true"
