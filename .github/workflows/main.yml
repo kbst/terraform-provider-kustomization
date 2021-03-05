@@ -15,6 +15,10 @@ jobs:
           runner: ["ubuntu-latest", "windows-latest", "macos-latest"]
 
     steps:
+    - name: Checkout using linefeed for tests
+      run: |
+        git config --global core.autocrlf false
+
     - name: 'Checkout'
       uses: actions/checkout@v1
 
