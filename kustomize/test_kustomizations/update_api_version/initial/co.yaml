@@ -1,0 +1,6 @@
+apiVersion: test.example.com/v1
+kind: Versionupdate
+metadata:
+  name: vuco
+  namespace: test-update-api-version
+spec: {}

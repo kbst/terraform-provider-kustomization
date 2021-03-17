@@ -574,8 +574,57 @@ resource "kustomization_resource" "dep1" {
 
 //
 //
-// Test check functions
+// Update apiVersion test
+func TestAccResourceKustomization_updateApiVersion(t *testing.T) {
 
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial apiVersions
+			{
+				Config: testAccResourceKustomizationConfig_updateApiVersion("test_kustomizations/update_api_version/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.vucrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.vuco", "id"),
+				),
+			},
+			//
+			//
+			// Applying modified apiVersion
+			{
+				Config: testAccResourceKustomizationConfig_updateApiVersion("test_kustomizations/update_api_version/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.vucrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.vuco", "id"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_updateApiVersion(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "vucrd" {
+	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io_v1_CustomResourceDefinition|~X|versionupdates.test.example.com"]
+}
+
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_Namespace|~X|test-update-api-version"]
+}
+
+resource "kustomization_resource" "vuco" {
+	manifest = data.kustomization_build.test.manifests["test.example.com_v1_Versionupdate|test-update-api-version|vuco"]
+}
+`
+}
+
+//
+//
+// Test check functions
 func testAccCheckDeploymentPurged(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*Config).Client
