@@ -3,6 +3,7 @@ package kustomize
 import (
 	"fmt"
 	"io/ioutil"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -23,6 +24,7 @@ import (
 type Config struct {
 	Client                 dynamic.Interface
 	CachedGroupVersionKind cachedGroupVersionKind
+	Mutex                  *sync.Mutex
 }
 
 const kubeconfigDefault = "~/.kube/config"
@@ -110,7 +112,12 @@ func Provider() *schema.Provider {
 
 		cgvk := newCachedGroupVersionKind(clientset)
 
-		return &Config{client, cgvk}, nil
+		// Mutex to prevent parallel Kustomizer runs
+		// temp workaround for upstream bug
+		// https://github.com/kubernetes-sigs/kustomize/issues/3659
+		mu := &sync.Mutex{}
+
+		return &Config{client, cgvk, mu}, nil
 	}
 
 	return p
