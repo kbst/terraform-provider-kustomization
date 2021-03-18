@@ -687,7 +687,12 @@ func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 	fSys.WriteFile(KFILENAME, data)
 	defer fSys.RemoveAll(KFILENAME)
 
+	// mutex as tmp workaround for upstream bug
+	// https://github.com/kubernetes-sigs/kustomize/issues/3659
+	mu := m.(*Config).Mutex
+	mu.Lock()
 	rm, err := runKustomizeBuild(fSys, ".")
+	mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("buildKustomizeOverlay: %s", err)
 	}

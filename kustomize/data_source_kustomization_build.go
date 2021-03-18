@@ -46,7 +46,13 @@ func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 	path := d.Get("path").(string)
 
 	fSys := filesys.MakeFsOnDisk()
+
+	// mutex as tmp workaround for upstream bug
+	// https://github.com/kubernetes-sigs/kustomize/issues/3659
+	mu := m.(*Config).Mutex
+	mu.Lock()
 	rm, err := runKustomizeBuild(fSys, path)
+	mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("kustomizationBuild: %s", err)
 	}
