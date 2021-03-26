@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 
 	"sigs.k8s.io/kustomize/api/filesys"
 )
@@ -16,6 +17,15 @@ func dataSourceKustomization() *schema.Resource {
 			"path": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+			},
+			"load_restrictor": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+				ValidateFunc: validation.StringInSlice(
+					[]string{"none", ""},
+					false,
+				),
 			},
 			"ids": &schema.Schema{
 				Type:     schema.TypeSet,
@@ -44,6 +54,7 @@ func dataSourceKustomization() *schema.Resource {
 
 func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 	path := d.Get("path").(string)
+	load_restrictor := d.Get("load_restrictor").(string)
 
 	fSys := filesys.MakeFsOnDisk()
 
@@ -51,7 +62,7 @@ func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 	// https://github.com/kubernetes-sigs/kustomize/issues/3659
 	mu := m.(*Config).Mutex
 	mu.Lock()
-	rm, err := runKustomizeBuild(fSys, path)
+	rm, err := runKustomizeBuild(fSys, path, load_restrictor)
 	mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("kustomizationBuild: %s", err)

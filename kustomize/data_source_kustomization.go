@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resid"
 	"sigs.k8s.io/kustomize/api/resmap"
+	"sigs.k8s.io/kustomize/api/types"
 )
 
 func getIDFromResources(rm resmap.ResMap) (s string, err error) {
@@ -79,8 +80,14 @@ func idSetHash(v interface{}) int {
 	return prefixHash(p, h)
 }
 
-func runKustomizeBuild(fSys filesys.FileSystem, path string) (rm resmap.ResMap, err error) {
+func runKustomizeBuild(fSys filesys.FileSystem, path string, load_restrictor string) (rm resmap.ResMap, err error) {
 	opts := krusty.MakeDefaultOptions()
+
+	// If the load_restrictor option is set to none then the krusty.Options
+	// should be updated to reflect this.
+	if load_restrictor == "none" {
+		opts.LoadRestrictions = types.LoadRestrictionsNone
+	}
 
 	k := krusty.MakeKustomizer(fSys, opts)
 

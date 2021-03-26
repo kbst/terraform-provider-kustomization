@@ -387,6 +387,15 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
+			"load_restrictor": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+				ValidateFunc: validation.StringInSlice(
+					[]string{"none", ""},
+					false,
+				),
+			},
 		},
 	}
 }
@@ -666,6 +675,8 @@ func refuseExistingKustomization(fSys filesys.FileSystem) error {
 func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 	k := getKustomization(d)
 
+	load_restrictor := d.Get("load_restrictor").(string)
+
 	var b bytes.Buffer
 	ye := yaml.NewEncoder(io.Writer(&b))
 	ye.Encode(k)
@@ -691,7 +702,7 @@ func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 	// https://github.com/kubernetes-sigs/kustomize/issues/3659
 	mu := m.(*Config).Mutex
 	mu.Lock()
-	rm, err := runKustomizeBuild(fSys, ".")
+	rm, err := runKustomizeBuild(fSys, ".", load_restrictor)
 	mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("buildKustomizeOverlay: %s", err)
