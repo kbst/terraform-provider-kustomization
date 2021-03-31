@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 
 	"sigs.k8s.io/kustomize/api/filesys"
 )
@@ -18,14 +17,17 @@ func dataSourceKustomization() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"load_restrictor": &schema.Schema{
-				Type:     schema.TypeString,
+			"kustomize_options": &schema.Schema{
+				Type:     schema.TypeMap,
 				Optional: true,
-				Default:  "",
-				ValidateFunc: validation.StringInSlice(
-					[]string{"none", ""},
-					false,
-				),
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"load_restrictor": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
 			},
 			"ids": &schema.Schema{
 				Type:     schema.TypeSet,
@@ -52,9 +54,31 @@ func dataSourceKustomization() *schema.Resource {
 	}
 }
 
+type kustomizeOptions struct {
+	loadRestrictor string
+}
+
+func getKustomizeOptions(d *schema.ResourceData) (k kustomizeOptions) {
+	// initialize kustomizeOptions with defaults
+	k = kustomizeOptions{
+		loadRestrictor: "",
+	}
+
+	kOpts := d.Get("kustomize_options").(map[string]interface{})
+
+	if kOpts["load_restrictor"] != nil {
+		if kOpts["load_restrictor"].(string) == "none" {
+			k.loadRestrictor = "none"
+		}
+	}
+
+	return k
+}
+
 func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 	path := d.Get("path").(string)
-	load_restrictor := d.Get("load_restrictor").(string)
+
+	kOpts := getKustomizeOptions(d)
 
 	fSys := filesys.MakeFsOnDisk()
 
@@ -62,7 +86,7 @@ func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 	// https://github.com/kubernetes-sigs/kustomize/issues/3659
 	mu := m.(*Config).Mutex
 	mu.Lock()
-	rm, err := runKustomizeBuild(fSys, path, load_restrictor)
+	rm, err := runKustomizeBuild(fSys, path, kOpts.loadRestrictor)
 	mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("kustomizationBuild: %s", err)
