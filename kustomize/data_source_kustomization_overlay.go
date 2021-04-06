@@ -387,6 +387,18 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
+			"kustomize_options": &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"load_restrictor": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -691,7 +703,7 @@ func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 	// https://github.com/kubernetes-sigs/kustomize/issues/3659
 	mu := m.(*Config).Mutex
 	mu.Lock()
-	rm, err := runKustomizeBuild(fSys, ".")
+	rm, err := runKustomizeBuild(fSys, ".", d)
 	mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("buildKustomizeOverlay: %s", err)

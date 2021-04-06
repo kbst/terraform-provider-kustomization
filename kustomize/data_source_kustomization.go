@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resid"
 	"sigs.k8s.io/kustomize/api/resmap"
+	"sigs.k8s.io/kustomize/api/types"
 )
 
 func getIDFromResources(rm resmap.ResMap) (s string, err error) {
@@ -79,8 +80,9 @@ func idSetHash(v interface{}) int {
 	return prefixHash(p, h)
 }
 
-func runKustomizeBuild(fSys filesys.FileSystem, path string) (rm resmap.ResMap, err error) {
-	opts := krusty.MakeDefaultOptions()
+func runKustomizeBuild(fSys filesys.FileSystem, path string, kOpts *schema.ResourceData) (rm resmap.ResMap, err error) {
+
+	opts := getKustomizeOptions(kOpts)
 
 	k := krusty.MakeKustomizer(fSys, opts)
 
@@ -110,4 +112,19 @@ func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap) error {
 	d.SetId(id)
 
 	return nil
+}
+
+func getKustomizeOptions(d *schema.ResourceData) (opts *krusty.Options) {
+
+	opts = krusty.MakeDefaultOptions()
+
+	kOpts := d.Get("kustomize_options").(map[string]interface{})
+
+	if kOpts["load_restrictor"] != nil {
+		if kOpts["load_restrictor"].(string) == "none" {
+			opts.LoadRestrictions = types.LoadRestrictionsNone
+		}
+	}
+
+	return opts
 }

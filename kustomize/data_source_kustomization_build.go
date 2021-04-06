@@ -17,6 +17,18 @@ func dataSourceKustomization() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"kustomize_options": &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"load_restrictor": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"ids": &schema.Schema{
 				Type:     schema.TypeSet,
 				Computed: true,
@@ -51,7 +63,7 @@ func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 	// https://github.com/kubernetes-sigs/kustomize/issues/3659
 	mu := m.(*Config).Mutex
 	mu.Lock()
-	rm, err := runKustomizeBuild(fSys, path)
+	rm, err := runKustomizeBuild(fSys, path, d)
 	mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("kustomizationBuild: %s", err)
