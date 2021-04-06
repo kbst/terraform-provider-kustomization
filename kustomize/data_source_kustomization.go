@@ -118,3 +118,24 @@ func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap) error {
 
 	return nil
 }
+
+type kustomizeOptions struct {
+	loadRestrictor string
+}
+
+func getKustomizeOptions(d *schema.ResourceData) (k kustomizeOptions) {
+	// initialize kustomizeOptions with defaults
+	k = kustomizeOptions{
+		loadRestrictor: "",
+	}
+
+	kOpts := d.Get("kustomize_options").(map[string]interface{})
+
+	if kOpts["load_restrictor"] != nil {
+		if kOpts["load_restrictor"].(string) == "none" {
+			k.loadRestrictor = "none"
+		}
+	}
+
+	return k
+}

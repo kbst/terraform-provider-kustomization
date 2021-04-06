@@ -54,27 +54,6 @@ func dataSourceKustomization() *schema.Resource {
 	}
 }
 
-type kustomizeOptions struct {
-	loadRestrictor string
-}
-
-func getKustomizeOptions(d *schema.ResourceData) (k kustomizeOptions) {
-	// initialize kustomizeOptions with defaults
-	k = kustomizeOptions{
-		loadRestrictor: "",
-	}
-
-	kOpts := d.Get("kustomize_options").(map[string]interface{})
-
-	if kOpts["load_restrictor"] != nil {
-		if kOpts["load_restrictor"].(string) == "none" {
-			k.loadRestrictor = "none"
-		}
-	}
-
-	return k
-}
-
 func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 	path := d.Get("path").(string)
 
