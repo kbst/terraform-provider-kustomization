@@ -80,14 +80,9 @@ func idSetHash(v interface{}) int {
 	return prefixHash(p, h)
 }
 
-func runKustomizeBuild(fSys filesys.FileSystem, path string, load_restrictor string) (rm resmap.ResMap, err error) {
-	opts := krusty.MakeDefaultOptions()
+func runKustomizeBuild(fSys filesys.FileSystem, path string, kOpts *schema.ResourceData) (rm resmap.ResMap, err error) {
 
-	// If the load_restrictor option is set to none then the krusty.Options
-	// should be updated to reflect this.
-	if load_restrictor == "none" {
-		opts.LoadRestrictions = types.LoadRestrictionsNone
-	}
+	opts := getKustomizeOptions(kOpts)
 
 	k := krusty.MakeKustomizer(fSys, opts)
 
@@ -119,23 +114,17 @@ func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap) error {
 	return nil
 }
 
-type kustomizeOptions struct {
-	loadRestrictor string
-}
+func getKustomizeOptions(d *schema.ResourceData) (opts *krusty.Options) {
 
-func getKustomizeOptions(d *schema.ResourceData) (k kustomizeOptions) {
-	// initialize kustomizeOptions with defaults
-	k = kustomizeOptions{
-		loadRestrictor: "",
-	}
+	opts = krusty.MakeDefaultOptions()
 
 	kOpts := d.Get("kustomize_options").(map[string]interface{})
 
 	if kOpts["load_restrictor"] != nil {
 		if kOpts["load_restrictor"].(string) == "none" {
-			k.loadRestrictor = "none"
+			opts.LoadRestrictions = types.LoadRestrictionsNone
 		}
 	}
 
-	return k
+	return opts
 }
