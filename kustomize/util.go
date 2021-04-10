@@ -8,12 +8,15 @@ import (
 	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/kubectl/pkg/scheme"
 )
 
 const lastAppliedConfig = k8scorev1.LastAppliedConfigAnnotation
@@ -84,17 +87,39 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 	return original, modified, current, nil
 }
 
-func getPatch(original []byte, modified []byte, current []byte) (patch []byte, err error) {
-	preconditions := []mergepatch.PreconditionFunc{
-		mergepatch.RequireKeyUnchanged("apiVersion"),
-		mergepatch.RequireKeyUnchanged("kind"),
-		mergepatch.RequireMetadataKeyUnchanged("name")}
-	patch, err = jsonmergepatch.CreateThreeWayJSONMergePatch(
-		original, modified, current, preconditions...)
-	if err != nil {
-		return nil, fmt.Errorf("CreateThreeWayJSONMergePatch failed: %s", err)
+func getPatch(gvk k8sschema.GroupVersionKind, original []byte, modified []byte, current []byte) (patch []byte, patchType k8stypes.PatchType, err error) {
+	versionedObject, err := scheme.Scheme.New(gvk)
+	switch {
+	case k8sruntime.IsNotRegisteredError(err):
+		patchType = k8stypes.MergePatchType
+
+		preconditions := []mergepatch.PreconditionFunc{
+			mergepatch.RequireKeyUnchanged("apiVersion"),
+			mergepatch.RequireKeyUnchanged("kind"),
+			mergepatch.RequireMetadataKeyUnchanged("name"),
+		}
+
+		patch, err = jsonmergepatch.CreateThreeWayJSONMergePatch(original, modified, current, preconditions...)
+		if err != nil {
+			return nil, patchType, fmt.Errorf("getPatch failed: %s", err)
+		}
+	case err != nil:
+		return nil, patchType, fmt.Errorf("getPatch failed: %s", err)
+	case err == nil:
+		patchType = k8stypes.StrategicMergePatchType
+
+		lookupPatchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)
+		if err != nil {
+			return nil, patchType, fmt.Errorf("getPatch failed: %s", err)
+		}
+
+		patch, err = strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, true)
+		if err != nil {
+			return nil, patchType, fmt.Errorf("getPatch failed: %s", err)
+		}
 	}
-	return patch, nil
+
+	return patch, patchType, nil
 }
 
 func parseJSON(json string) (ur *k8sunstructured.Unstructured, err error) {
@@ -110,7 +135,7 @@ func parseJSON(json string) (ur *k8sunstructured.Unstructured, err error) {
 }
 
 // log error including caller name and k8s resource
-func logErrorForResource(u *unstructured.Unstructured, m error) error {
+func logErrorForResource(u *k8sunstructured.Unstructured, m error) error {
 	pc, _, _, _ := runtime.Caller(1)
 	fn := runtime.FuncForPC(pc)
 
