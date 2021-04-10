@@ -16,7 +16,6 @@ import (
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
-	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -220,7 +219,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		)
 	}
 
-	patch, err := getPatch(original, modified, current)
+	patch, patchType, err := getPatch(u.GroupVersionKind(), original, modified, current)
 	if err != nil {
 		return logErrorForResource(
 			u,
@@ -230,59 +229,37 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 
 	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
 
-	patchTypes := []k8stypes.PatchType{
-		k8stypes.StrategicMergePatchType,
-		k8stypes.MergePatchType,
-	}
-	for _, patchType := range patchTypes {
-		_, err = client.
-			Resource(gvr).
-			Namespace(u.GetNamespace()).
-			Patch(context.TODO(), u.GetName(), patchType, patch, dryRunPatch)
-		if err != nil {
+	_, err = client.
+		Resource(gvr).
+		Namespace(u.GetNamespace()).
+		Patch(context.TODO(), u.GetName(), patchType, patch, dryRunPatch)
+	if err != nil {
+		// Handle specific invalid errors
+		if k8serrors.IsInvalid(err) {
+			as := err.(k8serrors.APIStatus).Status()
 
-			//
-			// If the resource kind does not support StrategicMergePatchType
-			// fall back to MergePatchType and retry
-			if k8serrors.IsUnsupportedMediaType(err) {
-				continue
-			}
+			// ForceNew only when exact single cause
+			if len(as.Details.Causes) == 1 {
+				msg := as.Details.Causes[0].Message
 
-			// Handle specific invalid errors
-			if k8serrors.IsInvalid(err) {
-				as := err.(k8serrors.APIStatus).Status()
-
-				// ForceNew only when exact single cause
-				if len(as.Details.Causes) == 1 {
-					msg := as.Details.Causes[0].Message
-
-					// if cause is immutable field force a delete and re-create plan
-					if k8serrors.HasStatusCause(err, k8smetav1.CauseTypeFieldValueInvalid) && strings.HasSuffix(msg, ": field is immutable") == true {
-						d.ForceNew("manifest")
-						return nil
-					}
-
-					// if cause is statefulset forbidden fields error force a delete and re-create plan
-					if k8serrors.HasStatusCause(err, k8smetav1.CauseType(field.ErrorTypeForbidden)) && strings.HasPrefix(msg, "Forbidden: updates to statefulset spec for fields") == true {
-						d.ForceNew("manifest")
-						return nil
-					}
+				// if cause is immutable field force a delete and re-create plan
+				if k8serrors.HasStatusCause(err, k8smetav1.CauseTypeFieldValueInvalid) && strings.HasSuffix(msg, ": field is immutable") == true {
+					d.ForceNew("manifest")
+					return nil
 				}
 
-				// if StrategicMergePatchType fall back to MergePatchType before returning an error to the user
-				if patchType == k8stypes.StrategicMergePatchType {
-					continue
+				// if cause is statefulset forbidden fields error force a delete and re-create plan
+				if k8serrors.HasStatusCause(err, k8smetav1.CauseType(field.ErrorTypeForbidden)) && strings.HasPrefix(msg, "Forbidden: updates to statefulset spec for fields") == true {
+					d.ForceNew("manifest")
+					return nil
 				}
 			}
-
-			return logErrorForResource(
-				u,
-				fmt.Errorf("patch failed '%s': %s", patchType, err),
-			)
 		}
 
-		// If StrategicMergePatchType succeeded without error stop the loop
-		break
+		return logErrorForResource(
+			u,
+			fmt.Errorf("patch failed '%s': %s", patchType, err),
+		)
 	}
 
 	return nil
@@ -364,7 +341,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		)
 	}
 
-	patch, err := getPatch(original, modified, current)
+	patch, patchType, err := getPatch(u.GroupVersionKind(), original, modified, current)
 	if err != nil {
 		return logErrorForResource(
 			u,
@@ -373,29 +350,15 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	var patchResp *unstructured.Unstructured
-	patchTypes := []k8stypes.PatchType{
-		k8stypes.StrategicMergePatchType,
-		k8stypes.MergePatchType,
-	}
-	for _, patchType := range patchTypes {
-		patchResp, err = client.
-			Resource(gvr).
-			Namespace(u.GetNamespace()).
-			Patch(context.TODO(), u.GetName(), patchType, patch, k8smetav1.PatchOptions{})
-		if err != nil {
-			// if either StrategicMergePatchType is not supported or returns invalid fall back to MergePatchType and retry
-			if k8serrors.IsUnsupportedMediaType(err) || k8serrors.IsInvalid(err) {
-				continue
-			}
-
-			return logErrorForResource(
-				u,
-				fmt.Errorf("patch failed '%s': %s", patchType, err),
-			)
-		}
-
-		// If StrategicMergePatchType succeeded without error stop the loop
-		break
+	patchResp, err = client.
+		Resource(gvr).
+		Namespace(u.GetNamespace()).
+		Patch(context.TODO(), u.GetName(), patchType, patch, k8smetav1.PatchOptions{})
+	if err != nil {
+		return logErrorForResource(
+			u,
+			fmt.Errorf("patch failed '%s': %s", patchType, err),
+		)
 	}
 
 	id := string(patchResp.GetUID())
