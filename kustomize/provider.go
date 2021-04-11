@@ -27,8 +27,6 @@ type Config struct {
 	Mutex                  *sync.Mutex
 }
 
-const kubeconfigDefault = "~/.kube/config"
-
 // Provider ...
 func Provider() *schema.Provider {
 	p := &schema.Provider{
@@ -48,21 +46,17 @@ func Provider() *schema.Provider {
 
 		Schema: map[string]*schema.Schema{
 			"kubeconfig_path": {
-				Type:     schema.TypeString,
-				Optional: true,
-				DefaultFunc: schema.MultiEnvDefaultFunc(
-					[]string{
-						"KUBE_CONFIG",
-						"KUBECONFIG",
-					},
-					kubeconfigDefault),
-				Description: fmt.Sprintf("Path to a kubeconfig file. Defaults to '%s'.", kubeconfigDefault),
+				Type:         schema.TypeString,
+				Optional:     true,
+				DefaultFunc:  schema.EnvDefaultFunc("KUBECONFIG_PATH", nil),
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw"},
+				Description:  fmt.Sprintf("Path to a kubeconfig file. Can be set using KUBECONFIG_PATH env var. Either kubeconfig_path or kubeconfig_raw is required."),
 			},
 			"kubeconfig_raw": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "",
-				Description: "Raw kubeconfig file. If kubeconfig_raw is set,  kubeconfig_path is ignored.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw"},
+				Description:  "Raw kube config. If kubeconfig_raw is set, kubeconfig_path is ignored.",
 			},
 			"context": {
 				Type:        schema.TypeString,
@@ -74,26 +68,37 @@ func Provider() *schema.Provider {
 	}
 
 	p.ConfigureFunc = func(d *schema.ResourceData) (interface{}, error) {
-		var data []byte
 		var config *rest.Config
 		var err error
 
-		context := d.Get("context").(string)
 		raw := d.Get("kubeconfig_raw").(string)
-		data = []byte(raw)
+		path := d.Get("kubeconfig_path").(string)
+		context := d.Get("context").(string)
 
-		// try to get a config from kubeconfig_raw
-		config, err = getClientConfig(data, context)
-		if err != nil {
-			// if kubeconfig_raw did not work, try kubeconfig_path
-			path := d.Get("kubeconfig_path").(string)
-			data, _ = readKubeconfigFile(path)
+		if raw != "" {
+			config, err = getClientConfig([]byte(raw), context)
+			if err != nil {
+				return nil, fmt.Errorf("provider kustomization: kubeconfig_raw: %s", err)
+			}
+		}
+
+		if raw == "" && path != "" {
+			data, err := readKubeconfigFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("provider kustomization: kubeconfig_path: %s", err)
+			}
 
 			config, err = getClientConfig(data, context)
 			if err != nil {
-				// if neither worked we fall back to an empty default config
-				config = &rest.Config{}
+				return nil, fmt.Errorf("provider kustomization: kubeconfig_path: %s", err)
 			}
+		}
+
+		// empty default config required to support
+		// using a cluster resource or data source
+		// that may not exist yet, to configure the provider
+		if config == nil {
+			config = &rest.Config{}
 		}
 
 		// Increase QPS and Burst rate limits
@@ -102,12 +107,12 @@ func Provider() *schema.Provider {
 
 		client, err := dynamic.NewForConfig(config)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("provider kustomization: %s", err)
 		}
 
 		clientset, err := kubernetes.NewForConfig(config)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("provider kustomization: %s", err)
 		}
 
 		cgvk := newCachedGroupVersionKind(clientset)
