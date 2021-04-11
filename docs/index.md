@@ -1,16 +1,18 @@
 # Kustomize Provider
 
-This provider aims to solve 3 common issues of applying a kustomization using kubectl by integrating Kustomize and Terraform.
+This provider allows building existing kustomizations using the `kustomization_build` data source or defining
+dynamic kustomizations in HCL using the `kustomization_overlay` data source and applying the resources from
+either kustomization against a Kubernetes cluster using the `kustomization_resource` resource.
 
-1. Lack of feedback what changes will be applied.
-1. Resources from a previous apply not in the current apply are not purged.
-1. Immutable changes like e.g. changing a deployment's selector cause the apply to fail mid way.
+The provider is maintained as part of the [Terraform GitOps framework Kubestack](https://www.kubestack.com/).
 
-To solve this the provider uses the Terraform state to show changes to each resource individually during plan as well as track resources in need of purging.
+Using this Kustomize provider and Terraform has three main benefits compared to applying a kustomization using `kubectl`:
 
-It also uses [server side dry runs](https://kubernetes.io/docs/reference/using-api/api-concepts/#dry-run) to validate changes to the desired state and translate this into a Terraform plan that will show if a resource will be updated in-place or requires a delete and recreate to apply the changes.
+1. Running `terraform plan` will show a diff of the changes to be applied.
+1. Deleted resources from a previous configuration will be purged.
+1. Changes to immutable fields will generate a destroy and re-create plan.
 
-As such it can be useful both to replace kustomize/kubectl integrated into a Terraform configuration as a provisioner as well as standalone `kubectl diff/apply` steps in CI/CD. The provider was primarily developed for Kubestack, the [Terraform GitOps framework](https://www.kubestack.com/), but is supported and tested to be used standalone.
+As such the provider can be useful to replace kustomize/kubectl integrated into a Terraform configuration as a provisioner or to replace standalone `kubectl diff/apply` steps in CI/CD.
 
 ## Example Usage
 
@@ -19,21 +21,28 @@ terraform {
   required_providers {
     kustomization = {
       source  = "kbst/kustomization"
-      version = ">= 0.2"
+      version = "0.5.0"
     }
   }
-  required_version = ">= 0.12"
 }
 
-provider "kustomization" {}
+provider "kustomization" {
+  # one of kubeconfig_path or kubeconfig_raw is required
+
+  # kubeconfig_path = "~/.kube/config"
+  # can also be set using KUBECONFIG_PATH environment variable
+
+  # kubeconfig_raw = data.template_file.kubeconfig.rendered
+  # kubeconfig_raw = yamlencode(local.kubeconfig)
+}
 
 ```
 
 ## Argument Reference
 
-- `kubeconfig_path` - (Optional) Path to a kubeconfig file. Defaults to `KUBECONFIG`, `KUBE_CONFIG` or `~/.kube/config`.
-- `kubeconfig_raw` - (Optional) Raw kubeconfig file. If kubeconfig_raw is set, kubeconfig_path is ignored.
-- `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.
+- `kubeconfig_path` - (One of `kubeconfig_path` or `kubeconfig_raw` required) Path to a kubeconfig file. Can be set using `KUBECONFIG_PATH` environment variable.
+- `kubeconfig_raw` - (One of `kubeconfig_path` or `kubeconfig_raw` required) Raw kubeconfig file. If `kubeconfig_raw` is set, `kubeconfig_path` is ignored.
+- `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is used.
 
 ## Imports
 
