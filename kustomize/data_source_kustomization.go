@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/types"
@@ -120,20 +120,24 @@ func getKustomizeOptions(d *schema.ResourceData) (opts *krusty.Options) {
 
 	opts = krusty.MakeDefaultOptions()
 
-	kOpts := d.Get("kustomize_options").(map[string]interface{})
+	kOptsList := d.Get("kustomize_options").([]interface{})
 
-	if kOpts["load_restrictor"] != nil {
-		if kOpts["load_restrictor"].(string) == "none" {
-			opts.LoadRestrictions = types.LoadRestrictionsNone
+	if len(kOptsList) == 1 {
+		kOpts := kOptsList[0].(map[string]interface{})
+
+		if kOpts["load_restrictor"] != nil {
+			if kOpts["load_restrictor"].(string) == "none" {
+				opts.LoadRestrictions = types.LoadRestrictionsNone
+			}
 		}
-	}
 
-	if kOpts["enable_helm"] != nil {
-		if kOpts["enable_helm"].(string) == "true" {
-			opts.PluginConfig = types.EnabledPluginConfig(types.BploUseStaticallyLinked)
+		if kOpts["enable_helm"] != nil {
+			if kOpts["enable_helm"].(bool) == true {
+				opts.PluginConfig = types.EnabledPluginConfig(types.BploUseStaticallyLinked)
 
-			if kOpts["helm_path"] != nil {
-				opts.PluginConfig.HelmConfig.Command = kOpts["helm_path"].(string)
+				if kOpts["helm_path"] != nil {
+					opts.PluginConfig.HelmConfig.Command = kOpts["helm_path"].(string)
+				}
 			}
 		}
 	}

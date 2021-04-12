@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"sigs.k8s.io/kustomize/api/konfig"
 	"sigs.k8s.io/kustomize/api/types"
@@ -233,8 +233,9 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							//ConflictsWith: []string{"path"},
 						},
 						"target": {
-							Type:     schema.TypeMap,
+							Type:     schema.TypeList,
 							Optional: true,
+							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"group": {
@@ -421,8 +422,9 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							Optional: true,
 						},
 						"obj_ref": {
-							Type:     schema.TypeMap,
+							Type:     schema.TypeList,
 							Optional: true,
+							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"api_version": {
@@ -453,8 +455,9 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							},
 						},
 						"field_ref": {
-							Type:     schema.TypeMap,
+							Type:     schema.TypeList,
 							Optional: true,
+							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"field_path": {
@@ -476,8 +479,6 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 			"ids_prio": &schema.Schema{
 				Type:     schema.TypeList,
 				Computed: true,
-				MinItems: 3,
-				MaxItems: 3,
 				Elem: &schema.Schema{
 					Type: schema.TypeSet,
 					Set:  idSetHash,
@@ -489,8 +490,9 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"kustomize_options": &schema.Schema{
-				Type:     schema.TypeMap,
+				Type:     schema.TypeList,
 				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"load_restrictor": {
@@ -515,6 +517,14 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 func convertListInterfaceToListString(in []interface{}) (out []string) {
 	for _, v := range in {
 		out = append(out, v.(string))
+	}
+	return out
+}
+
+func convertListInterfaceFirstItemToMapStringInterface(in []interface{}) (out map[string]interface{}) {
+	out = make(map[string]interface{})
+	if len(in) > 0 {
+		return in[0].(map[string]interface{})
 	}
 	return out
 }
@@ -647,7 +657,9 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			kp.Patch = p["patch"].(string)
 
 			t := convertMapStringInterfaceToMapStringString(
-				p["target"].(map[string]interface{}),
+				convertListInterfaceFirstItemToMapStringInterface(
+					p["target"].([]interface{}),
+				),
 			)
 
 			if len(t) > 0 {
@@ -792,7 +804,9 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			kv.Name = v["name"].(string)
 
 			or := convertMapStringInterfaceToMapStringString(
-				v["obj_ref"].(map[string]interface{}),
+				convertListInterfaceFirstItemToMapStringInterface(
+					v["obj_ref"].([]interface{}),
+				),
 			)
 
 			kv.ObjRef = types.Target{}
@@ -804,7 +818,9 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			kv.ObjRef.Namespace = or["namespace"]
 
 			fr := convertMapStringInterfaceToMapStringString(
-				v["field_ref"].(map[string]interface{}),
+				convertListInterfaceFirstItemToMapStringInterface(
+					v["field_ref"].([]interface{}),
+				),
 			)
 
 			kv.FieldRef = types.FieldSelector{}

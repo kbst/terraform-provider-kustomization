@@ -3,7 +3,7 @@ package kustomize
 import (
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
@@ -18,8 +18,9 @@ func dataSourceKustomization() *schema.Resource {
 				Required: true,
 			},
 			"kustomize_options": &schema.Schema{
-				Type:     schema.TypeMap,
+				Type:     schema.TypeList,
 				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"load_restrictor": {
@@ -46,8 +47,6 @@ func dataSourceKustomization() *schema.Resource {
 			"ids_prio": &schema.Schema{
 				Type:     schema.TypeList,
 				Computed: true,
-				MinItems: 3,
-				MaxItems: 3,
 				Elem: &schema.Schema{
 					Type: schema.TypeSet,
 					Set:  idSetHash,
