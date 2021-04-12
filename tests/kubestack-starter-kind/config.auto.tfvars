@@ -9,6 +9,8 @@ clusters = {
       # uncommenting extra_nodes below will give you a cluster
       # with 3 control-plane nodes and 3 worker nodes
       # extra_nodes = "control-plane,control-plane,worker,worker,worker"
+
+      disable_default_ingress = true
     }
 
     # Settings for Ops-cluster

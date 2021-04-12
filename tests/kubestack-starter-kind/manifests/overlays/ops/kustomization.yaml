@@ -3,7 +3,3 @@ kind: Kustomization
 
 resources:
 - ../apps
-
-replicas:
-- name: ingress-nginx-controller
-  count: 1
