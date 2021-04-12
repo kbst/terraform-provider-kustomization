@@ -36,7 +36,7 @@ func getLastAppliedConfig(u *k8sunstructured.Unstructured) string {
 
 func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
 	client := m.(*Config).Client
-	cgvk := m.(*Config).CachedGroupVersionKind
+	mapper := m.(*Config).Mapper
 
 	n, err := parseJSON(modifiedJSON)
 	if err != nil {
@@ -50,7 +50,7 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 	setLastAppliedConfig(o, originalJSON)
 	setLastAppliedConfig(n, modifiedJSON)
 
-	gvr, err := cgvk.getGVR(o.GroupVersionKind(), false)
+	mapping, err := mapper.RESTMapping(o.GroupVersionKind().GroupKind(), o.GroupVersionKind().Version)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -68,7 +68,7 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 	}
 
 	c, err := client.
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(namespace).
 		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
@@ -76,7 +76,7 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 			return original, modified, current, nil
 		}
 
-		return nil, nil, nil, fmt.Errorf("reading '%s' failed: %s", gvr, err)
+		return nil, nil, nil, fmt.Errorf("reading '%s' failed: %s", mapping.Resource, err)
 	}
 
 	current, err = c.MarshalJSON()
