@@ -621,9 +621,9 @@ func getResourceFromTestState(s *terraform.State, n string) (ur *k8sunstructured
 
 func getResourceFromK8sAPI(u *k8sunstructured.Unstructured) (resp *k8sunstructured.Unstructured, err error) {
 	client := testAccProvider.Meta().(*Config).Client
-	cgvk := testAccProvider.Meta().(*Config).CachedGroupVersionKind
+	mapper := testAccProvider.Meta().(*Config).Mapper
 
-	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
+	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
 	if err != nil {
 		return nil, err
 	}
@@ -631,7 +631,7 @@ func getResourceFromK8sAPI(u *k8sunstructured.Unstructured) (resp *k8sunstructur
 	name := u.GetName()
 
 	resp, err = client.
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(namespace).
 		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {

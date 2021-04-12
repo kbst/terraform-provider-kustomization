@@ -43,7 +43,7 @@ func kustomizationResource() *schema.Resource {
 
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
-	cgvk := m.(*Config).CachedGroupVersionKind
+	mapper := m.(*Config).Mapper
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -57,7 +57,8 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		Timeout: d.Timeout(schema.TimeoutCreate),
 		Refresh: func() (interface{}, string, error) {
 			// CRDs: wait for GroupVersionKind to exist
-			gvr, err := cgvk.getGVR(u.GroupVersionKind(), true)
+			mapper.Reset()
+			mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
 			if err != nil {
 				if k8smeta.IsNoMatchError(err) {
 					return nil, "pending", nil
@@ -65,7 +66,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 				return nil, "", err
 			}
 
-			return gvr, "existing", nil
+			return mapping.Resource, "existing", nil
 		},
 	}
 	gvrResp, err := stateConf.WaitForState()
@@ -88,7 +89,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			Group:   "",
 			Version: "",
 			Kind:    "Namespace"}
-		nsGvr, err := cgvk.getGVR(nsGvk, false)
+		mapping, err := mapper.RESTMapping(nsGvk.GroupKind(), nsGvk.GroupVersion().Version)
 		if err != nil {
 			return logErrorForResource(
 				u,
@@ -102,7 +103,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			Timeout: d.Timeout(schema.TimeoutCreate),
 			Refresh: func() (interface{}, string, error) {
 				resp, err := client.
-					Resource(nsGvr).
+					Resource(mapping.Resource).
 					Get(context.TODO(), namespace, k8smetav1.GetOptions{})
 				if err != nil {
 					if k8serrors.IsNotFound(err) {
@@ -144,7 +145,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
-	cgvk := m.(*Config).CachedGroupVersionKind
+	mapper := m.(*Config).Mapper
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -152,7 +153,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
-	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
+	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
 	if err != nil {
 		return logErrorForResource(
 			u,
@@ -161,7 +162,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	}
 
 	resp, err := client.
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(u.GetNamespace()).
 		Get(context.TODO(), u.GetName(), k8smetav1.GetOptions{})
 	if err != nil {
@@ -181,7 +182,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	client := m.(*Config).Client
-	cgvk := m.(*Config).CachedGroupVersionKind
+	mapper := m.(*Config).Mapper
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
 
@@ -199,7 +200,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
-	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
+	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
 	if err != nil {
 		return logErrorForResource(
 			u,
@@ -230,7 +231,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
 
 	_, err = client.
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(u.GetNamespace()).
 		Patch(context.TODO(), u.GetName(), patchType, patch, dryRunPatch)
 	if err != nil {
@@ -267,7 +268,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 
 func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	client := m.(*Config).Client
-	cgvk := m.(*Config).CachedGroupVersionKind
+	mapper := m.(*Config).Mapper
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -275,7 +276,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 		return false, logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
-	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
+	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
 	if err != nil {
 		if k8smeta.IsNoMatchError(err) {
 			// If the Kind does not exist in the K8s API,
@@ -286,7 +287,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 	}
 
 	_, err = client.
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(u.GetNamespace()).
 		Get(context.TODO(), u.GetName(), k8smetav1.GetOptions{})
 	if err != nil {
@@ -304,7 +305,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 
 func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
-	cgvk := m.(*Config).CachedGroupVersionKind
+	mapper := m.(*Config).Mapper
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
 
@@ -321,7 +322,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		)
 	}
 
-	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
+	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
 	if err != nil {
 		return logErrorForResource(
 			u,
@@ -351,7 +352,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 
 	var patchResp *unstructured.Unstructured
 	patchResp, err = client.
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(u.GetNamespace()).
 		Patch(context.TODO(), u.GetName(), patchType, patch, k8smetav1.PatchOptions{})
 	if err != nil {
@@ -371,7 +372,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
-	cgvk := m.(*Config).CachedGroupVersionKind
+	mapper := m.(*Config).Mapper
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -379,7 +380,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
-	gvr, err := cgvk.getGVR(u.GroupVersionKind(), false)
+	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
 	if err != nil {
 		if k8smeta.IsNoMatchError(err) {
 			// If the Kind does not exist in the K8s API,
@@ -393,7 +394,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	name := u.GetName()
 
 	err = client.
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(namespace).
 		Delete(context.TODO(), name, k8smetav1.DeleteOptions{})
 	if err != nil {
@@ -415,7 +416,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 		Timeout: d.Timeout(schema.TimeoutDelete),
 		Refresh: func() (interface{}, string, error) {
 			resp, err := client.
-				Resource(gvr).
+				Resource(mapping.Resource).
 				Namespace(namespace).
 				Get(context.TODO(), name, k8smetav1.GetOptions{})
 			if err != nil {
@@ -443,7 +444,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 
 func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
 	client := m.(*Config).Client
-	cgvk := m.(*Config).CachedGroupVersionKind
+	mapper := m.(*Config).Mapper
 
 	// "|" must match resid.separator
 	if len(strings.Split(d.Id(), "|")) != 3 {
@@ -460,7 +461,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 		Version: rid.Gvk.Version,
 		Kind:    rid.Gvk.Kind,
 	}
-	gvr, err := cgvk.getGVR(gvk, false)
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return nil, logError(
 			fmt.Errorf("apiVersion: %q, kind: %q, namespace: %q, name: %q: failed to query GVR: %s", gvk.GroupVersion(), gvk.Kind, namespace, name, err),
@@ -468,7 +469,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	}
 
 	resp, err := client.
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(namespace).
 		Get(context.TODO(), name, k8smetav1.GetOptions{})
 	if err != nil {
