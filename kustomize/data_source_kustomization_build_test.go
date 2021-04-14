@@ -103,7 +103,7 @@ provider "kustomization" {
 data "kustomization_build" "test" {
 	path = "%s"
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}

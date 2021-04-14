@@ -348,7 +348,7 @@ data "kustomization_overlay" "example" {
   }
 
   patches {
-    target = {
+    target {
       kind = "Namespace"
       name = "test-ns"
     }

@@ -60,7 +60,7 @@ data "kustomization_overlay" "test" {
     content {
       path   = lookup(i.value, "path", null)
       patch  = lookup(i.value, "patch", null)
-      target = lookup(i.value, "target", null) != null ? i.value["target"] : {}
+      target = [lookup(i.value, "target", null) != null ? i.value["target"] : {}]
     }
   }
 
@@ -99,7 +99,7 @@ data "kustomization_overlay" "test" {
     iterator = i
     content {
       name = lookup(i.value, "name", null)
-      obj_ref = {
+      obj_ref {
         api_version = lookup(i.value, "obj_ref", null) != null ? lookup(i.value["obj_ref"], "api_version", null) : null
         group       = lookup(i.value, "obj_ref", null) != null ? lookup(i.value["obj_ref"], "group", null) : null
         version     = lookup(i.value, "obj_ref", null) != null ? lookup(i.value["obj_ref"], "version", null) : null
@@ -107,7 +107,7 @@ data "kustomization_overlay" "test" {
         name        = lookup(i.value, "obj_ref", null) != null ? lookup(i.value["obj_ref"], "name", null) : null
         namespace   = lookup(i.value, "obj_ref", null) != null ? lookup(i.value["obj_ref"], "namespace", null) : null
       }
-      field_ref = {
+      field_ref {
         field_path = lookup(i.value, "field_ref", null) != null ? lookup(i.value["field_ref"], "field_path", null) : null
       }
     }

@@ -2,6 +2,7 @@ package kustomize
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -815,9 +816,13 @@ func TestDataSourceKustomizationOverlay_module(t *testing.T) {
 }
 
 func testKustomizationOverlayConfig_module() string {
-	absPath, _ := filepath.Abs("test_module")
-	modulePath := filepath.ToSlash(absPath)
-	return fmt.Sprintf(`
+	moduleAbsPath, _ := filepath.Abs("test_module")
+	testKustomizationsAbsPath, _ := filepath.Abs("test_kustomizations")
+
+	modulePath := filepath.ToSlash(moduleAbsPath)
+	testKustomizationsPath := filepath.ToSlash(testKustomizationsAbsPath)
+
+	config := fmt.Sprintf(`
 module "test" {
 	source = %q
 
@@ -856,7 +861,7 @@ module "test" {
 
 	patches = [
 		{
-			path = "%s/../test_kustomizations/_test_files/deployment_patch_env.yaml"
+			path = "%s/_test_files/deployment_patch_env.yaml"
 			patch = null
 			target = {}
 		}, {
@@ -905,7 +910,11 @@ output "check_cm" {
 output "check_s" {
 	value = module.test.kustomization.manifests["_/Secret/test-module/tp-os-ts-46f8b28mk5"]
 }
-`, modulePath, modulePath)
+`, modulePath, testKustomizationsPath)
+
+	ioutil.WriteFile("/tmp/test.tf", []byte(config), 0644)
+
+	return config
 }
 
 //
@@ -934,7 +943,7 @@ data "kustomization_overlay" "test" {
 		"test_kustomizations/basic/initial",
 	]
 	patches {
-		target = {
+		target {
 			kind = "Namespace"
 			name = "test-basic"
 		}
@@ -979,7 +988,7 @@ data "kustomization_overlay" "test" {
 		"test_kustomizations/basic/initial",
 	]
 	patches {
-		target = {
+		target {
 			kind = "Namespace"
 			name = "test-basic"
 		}
@@ -1028,7 +1037,7 @@ data "kustomization_overlay" "test" {
 		"test_kustomizations/helm/initial",
 	]
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
@@ -1076,7 +1085,7 @@ data "kustomization_overlay" "test" {
 
 	namespace = "test-basic"
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
@@ -1125,7 +1134,7 @@ data "kustomization_overlay" "test" {
 		release_name = "my-release"
 	}
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
@@ -1177,7 +1186,7 @@ data "kustomization_overlay" "test" {
 		values_file = "./test_kustomizations/helm/initial/alt-values.yaml"
 	}
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
@@ -1237,7 +1246,7 @@ data "kustomization_overlay" "test" {
     VALUES
 	}
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
@@ -1305,7 +1314,7 @@ data "kustomization_overlay" "test" {
 		values_merge = "override"
 	}
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
@@ -1358,7 +1367,7 @@ data "kustomization_overlay" "test" {
 		include_crds = true
 	}
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
@@ -1419,7 +1428,7 @@ data "kustomization_overlay" "test" {
 		version = "0.0.1"
 	}
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
@@ -1475,7 +1484,7 @@ data "kustomization_overlay" "test" {
 		release_name = "my-release"
 	}
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}
