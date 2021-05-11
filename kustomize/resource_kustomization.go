@@ -254,6 +254,12 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 					d.ForceNew("manifest")
 					return nil
 				}
+
+				// if cause is storageclass forbidden parameters error force a delete and re-create plan
+				if k8serrors.HasStatusCause(err, k8smetav1.CauseType(field.ErrorTypeForbidden)) && strings.HasPrefix(msg, "Forbidden: updates to parameters are forbidden") == true {
+					d.ForceNew("manifest")
+					return nil
+				}
 			}
 		}
 
