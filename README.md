@@ -6,7 +6,7 @@ This provider is maintained as part of the [Terraform GitOps framework Kubestack
 
 ## Using the Provider
 
-The Terraform provider for Kustomize is available from the [Terraform registry](https://registry.terraform.io/providers/kbst/kustomization/latest). Please refert to the [documentation](https://registry.terraform.io/providers/kbst/kustomization/latest/docs) for information on how to use the `kustomization_build` and `kustomization_overlay` data sources, or the `kustomization_resource` resource.
+The Terraform provider for Kustomize is available from the [Terraform registry](https://registry.terraform.io/providers/kbst/kustomization/latest). Please refer to the [documentation](https://registry.terraform.io/providers/kbst/kustomization/latest/docs) for information on how to use the `kustomization_build` and `kustomization_overlay` data sources, or the `kustomization_resource` resource.
 
 ## Development Requirements
 
