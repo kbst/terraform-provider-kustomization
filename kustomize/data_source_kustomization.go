@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
-	"sigs.k8s.io/kustomize/kyaml/resid"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/types"
+	"sigs.k8s.io/kustomize/kyaml/resid"
 )
 
 func getIDFromResources(rm resmap.ResMap) (s string, err error) {
@@ -123,6 +123,12 @@ func getKustomizeOptions(d *schema.ResourceData) (opts *krusty.Options) {
 	if kOpts["load_restrictor"] != nil {
 		if kOpts["load_restrictor"].(string) == "none" {
 			opts.LoadRestrictions = types.LoadRestrictionsNone
+		}
+	}
+
+	if kOpts["enable_alpha_plugins"] != nil {
+		if kOpts["enable_alpha_plugins"].(string) == "true" {
+			opts.PluginConfig = types.EnabledPluginConfig(types.BploUseStaticallyLinked)
 		}
 	}
 

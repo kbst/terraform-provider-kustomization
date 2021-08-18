@@ -26,6 +26,10 @@ func dataSourceKustomization() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"enable_alpha_plugins": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
 					},
 				},
 			},
