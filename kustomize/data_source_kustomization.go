@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
-	"sigs.k8s.io/kustomize/api/resid"
+	"sigs.k8s.io/kustomize/kyaml/resid"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/types"
 )
@@ -84,9 +84,9 @@ func runKustomizeBuild(fSys filesys.FileSystem, path string, kOpts *schema.Resou
 
 	opts := getKustomizeOptions(kOpts)
 
-	k := krusty.MakeKustomizer(fSys, opts)
+	k := krusty.MakeKustomizer(opts)
 
-	rm, err = k.Run(path)
+	rm, err = k.Run(fSys, path)
 	if err != nil {
 		return nil, fmt.Errorf("Kustomizer Run for path '%s' failed: %s", path, err)
 	}

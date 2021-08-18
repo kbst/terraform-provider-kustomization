@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sigs.k8s.io/kustomize/api/resid"
+	"sigs.k8s.io/kustomize/kyaml/resid"
 )
 
 func TestDeterminePrefix(t *testing.T) {
