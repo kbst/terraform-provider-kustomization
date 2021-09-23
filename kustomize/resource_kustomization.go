@@ -210,7 +210,7 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return nil
 	}
 
-	mapping, err := mapper.RESTMapping(ou.GroupVersionKind().GroupKind(), ou.GroupVersionKind().Version)
+	mapping, err := mapper.RESTMapping(mu.GroupVersionKind().GroupKind(), mu.GroupVersionKind().Version)
 	if err != nil {
 		return logErrorForResource(
 			ou,
