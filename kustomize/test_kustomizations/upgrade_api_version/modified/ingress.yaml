@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app: test-upgrade-api-version
+  name: test-upgrade-api-version
+  namespace: test-upgrade-api-version
+spec:
+  rules:
+  - host: test-upgrade-api-version.example.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: test-upgrade-api-version
+            port:
+              number: 80
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - test-upgrade-api-version.example.com
+    secretName: test-upgrade-api-version-tls-internal
