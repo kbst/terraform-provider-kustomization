@@ -331,6 +331,62 @@ resource "kustomization_resource" "dep1" {
 
 //
 //
+// Update_Recreate_Name_Or_Namespace_Change Test
+func TestAccResourceKustomization_updateRecreateNameOrNamespaceChange(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial config with a svc and deployment in a namespace
+			{
+				Config: testAccResourceKustomizationConfig_updateRecreateNameOrNamespaceChange("test_kustomizations/update_recreate_name_or_namespace_change/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.cm", "id"),
+				),
+			},
+			//
+			//
+			// Applying modified config changing the immutable label selectors
+			{
+				Config: testAccResourceKustomizationConfig_updateRecreateNameOrNamespaceChangeModified("test_kustomizations/update_recreate_name_or_namespace_change/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.cm", "id"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_updateRecreateNameOrNamespaceChange(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_Namespace|~X|test-update-recreate-name-or-namespace-change"]
+}
+
+resource "kustomization_resource" "cm" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_ConfigMap|test-update-recreate-name-or-namespace-change|test"]
+}
+`
+}
+
+func testAccResourceKustomizationConfig_updateRecreateNameOrNamespaceChangeModified(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_Namespace|~X|test-update-recreate-name-or-namespace-change-modified"]
+}
+
+resource "kustomization_resource" "cm" {
+	manifest = data.kustomization_build.test.manifests["~G_v1_ConfigMap|test-update-recreate-name-or-namespace-change-modified|test"]
+}
+`
+}
+
+//
+//
 // Update_Recreate_StatefulSet Test
 func TestAccResourceKustomization_updateRecreateStatefulSet(t *testing.T) {
 
