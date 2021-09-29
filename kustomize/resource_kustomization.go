@@ -190,20 +190,32 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		return nil
 	}
 
-	srcJSON := originalJSON.(string)
-	if srcJSON == "" {
+	originalSrcJSON := originalJSON.(string)
+	if originalSrcJSON == "" {
 		return nil
 	}
-
-	u, err := parseJSON(srcJSON)
+	
+	ou, err := parseJSON(originalSrcJSON)
+	if err != nil {
+		return logError(fmt.Errorf("JSON parse error: %s", err))
+	}
+	
+	modifiedSrcJSON := modifiedJSON.(string)
+	mu, err := parseJSON(modifiedSrcJSON)
 	if err != nil {
 		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
-	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
+	if ou.GetName() != mu.GetName() || ou.GetNamespace() != mu.GetNamespace() {
+		// if the resource name or namespace changes, we can't patch but have to destroy and re-create
+		d.ForceNew("manifest")
+		return nil
+	}
+
+	mapping, err := mapper.RESTMapping(ou.GroupVersionKind().GroupKind(), ou.GroupVersionKind().Version)
 	if err != nil {
 		return logErrorForResource(
-			u,
+			ou,
 			fmt.Errorf("failed to query GVR: %s", err),
 		)
 	}
@@ -215,15 +227,15 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 		m)
 	if err != nil {
 		return logErrorForResource(
-			u,
+			ou,
 			fmt.Errorf("getOriginalModifiedCurrent failed: %s", err),
 		)
 	}
 
-	patch, patchType, err := getPatch(u.GroupVersionKind(), original, modified, current)
+	patch, patchType, err := getPatch(ou.GroupVersionKind(), original, modified, current)
 	if err != nil {
 		return logErrorForResource(
-			u,
+			ou,
 			fmt.Errorf("getPatch failed: %s", err),
 		)
 	}
@@ -232,8 +244,8 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 
 	_, err = client.
 		Resource(mapping.Resource).
-		Namespace(u.GetNamespace()).
-		Patch(context.TODO(), u.GetName(), patchType, patch, dryRunPatch)
+		Namespace(ou.GetNamespace()).
+		Patch(context.TODO(), ou.GetName(), patchType, patch, dryRunPatch)
 	if err != nil {
 		// Handle specific invalid errors
 		if k8serrors.IsInvalid(err) {
@@ -254,11 +266,12 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 					d.ForceNew("manifest")
 					return nil
 				}
+
 			}
 		}
 
 		return logErrorForResource(
-			u,
+			ou,
 			fmt.Errorf("patch failed '%s': %s", patchType, err),
 		)
 	}
