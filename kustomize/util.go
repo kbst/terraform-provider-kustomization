@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 
 	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,7 +32,8 @@ func setLastAppliedConfig(u *k8sunstructured.Unstructured, srcJSON string) {
 }
 
 func getLastAppliedConfig(u *k8sunstructured.Unstructured) string {
-	return u.GetAnnotations()[lastAppliedConfig]
+	// ensure that lastAppliedConfig definitely ends in one and only one newline
+	return fmt.Sprintf("%s\n", strings.TrimRight(u.GetAnnotations()[lastAppliedConfig], "\r\n"))
 }
 
 func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {

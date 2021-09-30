@@ -8,7 +8,7 @@ import (
 )
 
 func TestLastAppliedConfig(t *testing.T) {
-	srcJSON := "{\"apiVersion\": \"v1\", \"kind\": \"Namespace\", \"metadata\": {\"name\": \"test-unit\"}}"
+	srcJSON := "{\"apiVersion\": \"v1\", \"kind\": \"Namespace\", \"metadata\": {\"name\": \"test-unit\"}}\n"
 	u, err := parseJSON(srcJSON)
 	if err != nil {
 		t.Errorf("Error: %s", err)
