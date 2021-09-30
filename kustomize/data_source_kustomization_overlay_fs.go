@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 var KFILENAME string = "Kustomization"
@@ -58,6 +58,10 @@ func (ofs overlayFileSystem) MkdirAll(name string) error {
 
 func (ofs overlayFileSystem) RemoveAll(name string) error {
 	return ofs.fs.RemoveAll(name)
+}
+
+func (ofs overlayFileSystem) ReadDir(name string) ([]string, error) {
+	return ofs.fs.ReadDir(name)
 }
 
 func (ofs overlayFileSystem) Open(name string) (filesys.File, error) {

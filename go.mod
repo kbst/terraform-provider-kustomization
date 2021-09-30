@@ -10,6 +10,6 @@ require (
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v0.20.2
 	k8s.io/kubectl v0.20.2
-	sigs.k8s.io/kustomize/api v0.6.9
-	sigs.k8s.io/kustomize/kyaml v0.10.7
+	sigs.k8s.io/kustomize/api v0.10.0
+	sigs.k8s.io/kustomize/kyaml v0.12.0
 )

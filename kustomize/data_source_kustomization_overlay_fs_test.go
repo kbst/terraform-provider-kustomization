@@ -23,8 +23,8 @@ func TestOverlayFileSystemTwoDataSources(t *testing.T) {
 			{
 				Config: testOverlayFileSystemTwoDataSourcesConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check1", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-overlay1\"}}\n"),
-					resource.TestCheckOutput("check2", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-overlay2\"}}\n"),
+					resource.TestCheckOutput("check1", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-overlay1\"}}"),
+					resource.TestCheckOutput("check2", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-overlay2\"}}"),
 				),
 			},
 		},
