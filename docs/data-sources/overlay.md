@@ -51,6 +51,9 @@ data "kustomization_overlay" "example" {
     "path/to/kustomization/to/inherit/from",
     "path/to/kubernetes/resource.yaml",
   ]
+  kustomize_options = {
+    load_restrictor = "none"
+  }
 }
 
 ```
@@ -257,6 +260,22 @@ data "kustomization_overlay" "example" {
     new_name = "newname2"
     new_tag = "newtag2"
     digest = "sha256:abcdefghijklmnop123457"
+  }
+}
+```
+
+### `kustomize_options` - (optional)
+
+#### Child attributes
+
+- `load_restrictor` - setting this to `"none"` disables load restrictions
+
+#### Example
+
+```hcl
+data "kustomization_overlay" "example" {
+  kustomize_options = {
+    load_restrictor = "none"
   }
 }
 ```

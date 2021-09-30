@@ -9,6 +9,9 @@ Data source to `kustomize build` a Kustomization and return a set of `ids` and h
 ```hcl
 data "kustomization_build" "test" {
   path = "test_kustomizations/basic/initial"
+  kustomize_options = {
+    load_restrictor = "none"
+  }
 }
 
 ```
@@ -16,6 +19,12 @@ data "kustomization_build" "test" {
 ## Argument Reference
 
 - `path` - (Required) Path to a kustomization directory.
+
+### `kustomize_options` - (optional)
+
+#### Child attributes
+
+- `load_restrictor` - setting this to `"none"` disables load restrictions
 
 ## Attribute Reference
 
