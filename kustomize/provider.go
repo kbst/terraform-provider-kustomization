@@ -47,14 +47,20 @@ func Provider() *schema.Provider {
 				Type:         schema.TypeString,
 				Optional:     true,
 				DefaultFunc:  schema.EnvDefaultFunc("KUBECONFIG_PATH", nil),
-				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw"},
-				Description:  fmt.Sprintf("Path to a kubeconfig file. Can be set using KUBECONFIG_PATH env var. Either kubeconfig_path or kubeconfig_raw is required."),
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				Description:  "Path to a kubeconfig file. Can be set using KUBECONFIG_PATH env var",
 			},
 			"kubeconfig_raw": {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw"},
-				Description:  "Raw kube config. If kubeconfig_raw is set, kubeconfig_path is ignored.",
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				Description:  "Raw kube config. If kubeconfig_raw is set, KUBECONFIG_PATH is ignored.",
+			},
+			"kubeconfig_incluster": {
+				Type:         schema.TypeBool,
+				Optional:     true,
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				Description:  "Set to true when running inside a kubernetes cluster. If kubeconfig_incluster is set, KUBECONFIG_PATH is ignored.",
 			},
 			"context": {
 				Type:        schema.TypeString,
@@ -71,6 +77,7 @@ func Provider() *schema.Provider {
 
 		raw := d.Get("kubeconfig_raw").(string)
 		path := d.Get("kubeconfig_path").(string)
+		incluster := d.Get("kubeconfig_incluster").(bool)
 		context := d.Get("context").(string)
 
 		if raw != "" {
@@ -89,6 +96,13 @@ func Provider() *schema.Provider {
 			config, err = getClientConfig(data, context)
 			if err != nil {
 				return nil, fmt.Errorf("provider kustomization: kubeconfig_path: %s", err)
+			}
+		}
+
+		if incluster {
+			config, err = rest.InClusterConfig()
+			if err != nil {
+				return nil, fmt.Errorf("provider kustomization: couldn't load in cluster config: %s", err)
 			}
 		}
 
