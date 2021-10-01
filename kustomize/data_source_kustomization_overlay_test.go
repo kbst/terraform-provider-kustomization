@@ -105,7 +105,7 @@ func TestDataSourceKustomizationOverlay_commonAnnotations(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_commonAnnotations(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"name\":\"test-basic\"}}\n"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"name\":\"test-basic\"}}"),
 				),
 			},
 		},
@@ -142,7 +142,7 @@ func TestDataSourceKustomizationOverlay_commonLabels(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_commonLabels(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"labels\":{\"test-label\":\"true\"},\"name\":\"test-basic\"}}\n"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"labels\":{\"test-label\":\"true\"},\"name\":\"test-basic\"}}"),
 				),
 			},
 		},
@@ -179,7 +179,7 @@ func TestDataSourceKustomizationOverlay_components(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_components(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"from-component-6ct58987ht\"}}\n"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"from-component-6ct58987ht\"}}"),
 				),
 			},
 		},
@@ -212,8 +212,8 @@ func TestDataSourceKustomizationOverlay_configMapGenerator(t *testing.T) {
 			{
 				Config: testKustomizationConfigMapGeneratorConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap1\"}}\n"),
-					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"ENV1\":\"VALUE1\",\"ENV2\":\"VALUE2\",\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\",\"properties.env\":\"ENV1=VALUE1\\nENV2=VALUE2\\n\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap2-5tgmgc9cmf\"}}\n"),
+					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap1\"}}"),
+					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"ENV1\":\"VALUE1\",\"ENV2\":\"VALUE2\",\"KEY1\":\"VALUE1\",\"KEY2\":\"VALUE2\",\"properties.env\":\"ENV1=VALUE1\\nENV2=VALUE2\\n\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"test-configmap2-5tgmgc9cmf\"}}"),
 				),
 			},
 		},
@@ -273,7 +273,7 @@ func TestDataSourceKustomizationOverlay_namespace(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_namespace(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-overlay-namespace\"}}\n"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-overlay-namespace\"}}"),
 				),
 			},
 		},
@@ -309,7 +309,7 @@ func TestDataSourceKustomizationOverlay_name_prefix_suffix(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_name_prefix_suffix(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test-test-test\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"test\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}\n"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test-test-test\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"test\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
 				),
 			},
 		},
@@ -346,7 +346,7 @@ func TestDataSourceKustomizationOverlay_resources(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_resources(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-basic\"}}\n"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"test-basic\"}}"),
 				),
 			},
 		},
@@ -379,7 +379,7 @@ func TestDataSourceKustomizationOverlay_transformers(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testDataSourceKustomizationOverlayConfig_transformers(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\",\"test.example.com/test-label\":\"test-value\"},\"name\":\"test\",\"namespace\":\"test-transformer-config\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}\n"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\",\"test.example.com/test-label\":\"test-value\"},\"name\":\"test\",\"namespace\":\"test-transformer-config\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
 			},
 		},
 	})
@@ -417,7 +417,7 @@ func TestDataSourceKustomizationOverlay_crds(t *testing.T) {
 				// we only need to validate we pass the value to Kustomize
 				// this test verifies that the path by providing an invalid OpenAPI spec
 				// the Kustomize error proves the path was passed correctly
-				ExpectError: regexp.MustCompile("json: cannot unmarshal string into Go value of type common.OpenAPIDefinition"),
+				ExpectError: regexp.MustCompile("json: cannot unmarshal string into Go value of type accumulator.OpenAPIDefinition"),
 			},
 		},
 	})
@@ -444,7 +444,7 @@ func TestDataSourceKustomizationOverlay_generators(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testDataSourceKustomizationOverlayConfig_generators(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"testcm-6ct58987ht\"}}\n"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"testcm-6ct58987ht\"}}"),
 			},
 		},
 	})
@@ -476,8 +476,8 @@ func TestDataSourceKustomizationOverlay_generator_options(t *testing.T) {
 			{
 				Config: testKustomizationConfig_generator_options(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_configmap", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{\"test-annotation\":\"test\"},\"labels\":{\"test-label\":\"test\"},\"name\":\"test-configmap\"}}\n"),
-					resource.TestCheckOutput("check_secret", "{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"metadata\":{\"annotations\":{\"test-annotation\":\"test\"},\"labels\":{\"test-label\":\"test\"},\"name\":\"test-secret\"},\"type\":\"Opaque\"}\n"),
+					resource.TestCheckOutput("check_configmap", "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{\"test-annotation\":\"test\"},\"labels\":{\"test-label\":\"test\"},\"name\":\"test-configmap\"}}"),
+					resource.TestCheckOutput("check_secret", "{\"apiVersion\":\"v1\",\"data\":{},\"kind\":\"Secret\",\"metadata\":{\"annotations\":{\"test-annotation\":\"test\"},\"labels\":{\"test-label\":\"test\"},\"name\":\"test-secret\"},\"type\":\"Opaque\"}"),
 				),
 			},
 		},
@@ -531,7 +531,7 @@ func TestDataSourceKustomizationOverlay_images(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testKustomizationImagesConfig(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"testname@sha256:abcdefghijklmnop123456\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}\n"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"testname@sha256:abcdefghijklmnop123456\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
 			},
 		},
 	})
@@ -570,8 +570,8 @@ func TestDataSourceKustomizationOverlay_patches(t *testing.T) {
 			{
 				Config: testKustomizationPatchesConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_dep", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"true\"}],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}\n"),
-					resource.TestCheckOutput("check_ingress", "{\"apiVersion\":\"networking.k8s.io/v1beta1\",\"kind\":\"Ingress\",\"metadata\":{\"annotations\":{\"nginx.ingress.kubernetes.io/rewrite-target\":\"/\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"rules\":[{\"http\":{\"paths\":[{\"backend\":{\"serviceName\":\"test\",\"servicePort\":80},\"path\":\"/newpath\"}]}}]}}\n"),
+					resource.TestCheckOutput("check_dep", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"true\"}],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("check_ingress", "{\"apiVersion\":\"networking.k8s.io/v1beta1\",\"kind\":\"Ingress\",\"metadata\":{\"annotations\":{\"nginx.ingress.kubernetes.io/rewrite-target\":\"/\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"rules\":[{\"http\":{\"paths\":[{\"backend\":{\"serviceName\":\"test\",\"servicePort\":80},\"path\":\"/newpath\"}]}}]}}"),
 				),
 			},
 		},
@@ -630,7 +630,7 @@ func TestDataSourceKustomizationOverlay_replicas(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testKustomizationReplicasConfig(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":5,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}\n"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":5,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
 			},
 		},
 	})
@@ -667,8 +667,8 @@ func TestDataSourceKustomizationOverlay_secretGenerator(t *testing.T) {
 			{
 				Config: testKustomizationSecretGeneratorConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret1\"},\"type\":\"Opaque\"}\n"),
-					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"ENV1\":\"VkFMVUUx\",\"ENV2\":\"VkFMVUUy\",\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\",\"properties.env\":\"RU5WMT1WQUxVRTEKRU5WMj1WQUxVRTIK\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret2-h55cfd6gfg\"},\"type\":\"Opaque\"}\n"),
+					resource.TestCheckOutput("check_cm1", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret1\"},\"type\":\"Opaque\"}"),
+					resource.TestCheckOutput("check_cm2", "{\"apiVersion\":\"v1\",\"data\":{\"ENV1\":\"VkFMVUUx\",\"ENV2\":\"VkFMVUUy\",\"KEY1\":\"VkFMVUUx\",\"KEY2\":\"VkFMVUUy\",\"properties.env\":\"RU5WMT1WQUxVRTEKRU5WMj1WQUxVRTIK\"},\"kind\":\"Secret\",\"metadata\":{\"name\":\"test-secret2-h55cfd6gfg\"},\"type\":\"Opaque\"}"),
 				),
 			},
 		},
@@ -727,7 +727,7 @@ func TestDataSourceKustomizationOverlay_vars(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testKustomizationVarsConfig(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"test-basic\"}],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}\n"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"test-basic\"}],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
 			},
 		},
 	})
@@ -806,8 +806,8 @@ func TestDataSourceKustomizationOverlay_module(t *testing.T) {
 			{
 				Config: testKustomizationOverlayConfig_module(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_dep", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"app\":\"test\",\"test-label\":\"true\"},\"name\":\"tp-test-ts\",\"namespace\":\"test-module\"},\"spec\":{\"replicas\":9,\"selector\":{\"matchLabels\":{\"app\":\"test\",\"test-label\":\"true\"}},\"strategy\":{},\"template\":{\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"app\":\"test\",\"test-label\":\"true\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"true\"},{\"name\":\"TESTVAR\",\"value\":\"tp-os-ts-8226t8dd99\"}],\"image\":\"test\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}\n"),
-					resource.TestCheckOutput("check_cm", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{\"kustomize_generated\":\"true\",\"test-annotation\":\"true\"},\"labels\":{\"test-label\":\"true\"},\"name\":\"tp-ocm-ts\",\"namespace\":\"test-module\"}}\n"),
+					resource.TestCheckOutput("check_dep", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"app\":\"test\",\"test-label\":\"true\"},\"name\":\"tp-test-ts\",\"namespace\":\"test-module\"},\"spec\":{\"replicas\":9,\"selector\":{\"matchLabels\":{\"app\":\"test\",\"test-label\":\"true\"}},\"strategy\":{},\"template\":{\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"app\":\"test\",\"test-label\":\"true\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"true\"},{\"name\":\"TESTVAR\",\"value\":\"tp-os-ts-46f8b28mk5\"}],\"image\":\"test\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("check_cm", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{\"kustomize_generated\":\"true\",\"test-annotation\":\"true\"},\"labels\":{\"test-label\":\"true\"},\"name\":\"tp-ocm-ts\",\"namespace\":\"test-module\"}}"),
 				),
 			},
 		},
@@ -903,7 +903,7 @@ output "check_cm" {
 }
 
 output "check_s" {
-	value = module.test.kustomization.manifests["~G_v1_Secret|test-module|tp-os-ts-8226t8dd99"]
+	value = module.test.kustomization.manifests["~G_v1_Secret|test-module|tp-os-ts-46f8b28mk5"]
 }
 `, modulePath, modulePath)
 }

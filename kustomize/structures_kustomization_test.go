@@ -11,9 +11,9 @@ import (
 func TestFlattenKustomizationIDs(t *testing.T) {
 	fSys := filesys.MakeFsOnDisk()
 	opts := krusty.MakeDefaultOptions()
-	k := krusty.MakeKustomizer(fSys, opts)
+	k := krusty.MakeKustomizer(opts)
 
-	rm, err := k.Run("test_kustomizations/basic/initial")
+	rm, err := k.Run(fSys, "test_kustomizations/basic/initial")
 	assert.Equal(t, err, nil, nil)
 
 	ids, idsPrio := flattenKustomizationIDs(rm)
