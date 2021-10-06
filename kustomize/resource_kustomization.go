@@ -9,8 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
-	"sigs.k8s.io/kustomize/kyaml/resid"
-
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -194,12 +192,12 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	if originalSrcJSON == "" {
 		return nil
 	}
-	
+
 	ou, err := parseJSON(originalSrcJSON)
 	if err != nil {
 		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
-	
+
 	modifiedSrcJSON := modifiedJSON.(string)
 	mu, err := parseJSON(modifiedSrcJSON)
 	if err != nil {
@@ -459,35 +457,33 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
 
-	// "|" must match resid.separator
-	if len(strings.Split(d.Id(), "|")) != 3 {
-		return nil, logError(fmt.Errorf("invalid ID: %q, valid IDs look like: \"~G_v1_Namespace|~X|example\"", d.Id()))
+	k, err := parseProviderId(d.Id())
+	if err != nil {
+		k, err = parseKustomizationId(d.Id())
+		if err != nil {
+			return nil, logError(fmt.Errorf("invalid ID: %q, valid IDs look like: \"_/Namespace/_/example\" or \"~G_v1_Namespace|~X|example\"", d.Id()))
+		}
 	}
 
-	rid := resid.FromString(d.Id())
+	gk := k8sschema.GroupKind{Group: k.Group, Kind: k.Kind}
 
-	namespace := rid.Namespace
-	name := rid.Name
-
-	gvk := k8sschema.GroupVersionKind{
-		Group:   rid.Gvk.Group,
-		Version: rid.Gvk.Version,
-		Kind:    rid.Gvk.Kind,
-	}
-	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	// We don't need to use a specific API version here, as we're going to store the
+	// resource using the LastAppliedConfig information which we can get from any
+	// API version
+	mappings, err := mapper.RESTMappings(gk)
 	if err != nil {
 		return nil, logError(
-			fmt.Errorf("apiVersion: %q, kind: %q, namespace: %q, name: %q: failed to query GVR: %s", gvk.GroupVersion(), gvk.Kind, namespace, name, err),
+			fmt.Errorf("group: %q, kind: %q, namespace: %q, name: %q: failed to query GVR: %s", gk.Group, gk.Kind, k.Namespace, k.Name, err),
 		)
 	}
 
 	resp, err := client.
-		Resource(mapping.Resource).
-		Namespace(namespace).
-		Get(context.TODO(), name, k8smetav1.GetOptions{})
+		Resource(mappings[0].Resource).
+		Namespace(k.Namespace).
+		Get(context.TODO(), k.Name, k8smetav1.GetOptions{})
 	if err != nil {
 		return nil, logError(
-			fmt.Errorf("apiVersion: %q, kind: %q, namespace: %q, name: %q: get failed: %s", gvk.GroupVersion(), gvk.Kind, namespace, name, err),
+			fmt.Errorf("group: %q, kind: %q, namespace: %q, name: %q: get failed: %s", gk.Group, gk.Kind, k.Namespace, k.Name, err),
 		)
 	}
 
@@ -497,7 +493,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	lac := getLastAppliedConfig(resp)
 	if lac == "" {
 		return nil, logError(
-			fmt.Errorf("apiVersion: %q, kind: %q, namespace: %q, name: %q: can not import resources without %q annotation", gvk.GroupVersion(), gvk.Kind, namespace, name, lastAppliedConfig),
+			fmt.Errorf("group: %q, kind: %q, namespace: %q, name: %q: can not import resources without %q annotation", gk.Group, gk.Kind, k.Namespace, k.Name, lastAppliedConfig),
 		)
 	}
 

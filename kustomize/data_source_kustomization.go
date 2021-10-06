@@ -94,20 +94,23 @@ func runKustomizeBuild(fSys filesys.FileSystem, path string, kOpts *schema.Resou
 	return rm, nil
 }
 
-func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap) error {
-	ids, idsPrio := flattenKustomizationIDs(rm)
+func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap, legacy bool) error {
+	ids, idsPrio, err := flattenKustomizationIDs(rm, legacy)
+	if err != nil {
+		return fmt.Errorf("couldn't flatten kustomization IDs: %s", err)
+	}
 	d.Set("ids", ids)
 	d.Set("ids_prio", idsPrio)
 
-	resources, err := flattenKustomizationResources(rm)
+	resources, err := flattenKustomizationResources(rm, legacy)
 	if err != nil {
-		return fmt.Errorf("kustomizationBuild: %s", err)
+		return fmt.Errorf("couldn't flatten resources: %s", err)
 	}
 	d.Set("manifests", resources)
 
 	id, err := getIDFromResources(rm)
 	if err != nil {
-		return fmt.Errorf("kustomizationBuild: %s", err)
+		return fmt.Errorf("couldn't get ID from resources: %s", err)
 	}
 	d.SetId(id)
 
