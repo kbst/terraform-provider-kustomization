@@ -37,10 +37,7 @@ type KubernetesResource struct {
 	Name      string
 }
 
-func parseKustomizationId(id string) (*KubernetesResource, error) {
-	if !reKustomizationId.Match([]byte(id)) {
-		return nil, fmt.Errorf("id %s does not match format group_version_Kind|namespace|name", id)
-	}
+func mustParseKustomizationId(id string) *KubernetesResource {
 	rid := resid.FromString(id)
 
 	return &KubernetesResource{
@@ -48,7 +45,14 @@ func parseKustomizationId(id string) (*KubernetesResource, error) {
 		Kind:      rid.Gvk.Kind,
 		Namespace: rid.Namespace,
 		Name:      rid.Name,
-	}, nil
+	}
+}
+
+func parseKustomizationId(id string) (*KubernetesResource, error) {
+	if !reKustomizationId.Match([]byte(id)) {
+		return nil, fmt.Errorf("id %s does not match format group_version_Kind|namespace|name", id)
+	}
+	return mustParseKustomizationId(id), nil
 }
 
 func parseProviderId(id string) (*KubernetesResource, error) {
@@ -99,4 +103,23 @@ func convertKustomizeToTerraform(id string, legacy bool) (string, error) {
 	} else {
 		return k.toString(), nil
 	}
+}
+
+func parseEitherIdFormat(id string) (*KubernetesResource, error) {
+	k, err := parseProviderId(id)
+	if err != nil {
+		k, err = parseKustomizationId(id)
+		if err != nil {
+			return nil, fmt.Errorf("invalid ID: %q, valid IDs look like: \"_/Namespace/_/example\" or \"~G_v1_Namespace|~X|example\"", id)
+		}
+	}
+	return k, nil
+}
+
+func mustParseEitherIdFormat(id string) *KubernetesResource {
+	k, err := parseProviderId(id)
+	if err != nil {
+		return mustParseKustomizationId(id)
+	}
+	return k
 }

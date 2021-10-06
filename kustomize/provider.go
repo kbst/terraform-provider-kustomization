@@ -75,7 +75,7 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				Default:     true,
 				Deprecated:  "legacy_id_format will be set to false in a future version and be removed in a further later version",
-				Description: "If legacy_id_format is false, then resource IDs will look like group_version_kind|namespace|name. If legacy_id_format is false, then resource IDs will look like group/kind/namespace/name",
+				Description: "If legacy_id_format is true, then resource IDs will look like group_version_kind|namespace|name. If legacy_id_format is false, then resource IDs will look like group/kind/namespace/name",
 			},
 		},
 	}

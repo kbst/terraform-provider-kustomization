@@ -457,14 +457,10 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
 
-	k, err := parseProviderId(d.Id())
+	k, err := parseEitherIdFormat(d.Id())
 	if err != nil {
-		k, err = parseKustomizationId(d.Id())
-		if err != nil {
-			return nil, logError(fmt.Errorf("invalid ID: %q, valid IDs look like: \"_/Namespace/_/example\" or \"~G_v1_Namespace|~X|example\"", d.Id()))
-		}
+		return nil, logError(err)
 	}
-
 	gk := k8sschema.GroupKind{Group: k.Group, Kind: k.Kind}
 
 	// We don't need to use a specific API version here, as we're going to store the

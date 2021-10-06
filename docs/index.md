@@ -53,7 +53,7 @@ provider "kustomization" {
 To allow the kustomization provider to manage API version upgrades, the version has been removed
 from resource IDs. As this is a breaking change, we are moving to what should be a nicer format
 
-Legacy format: `apps_v1_Deployment|test-ns/test-deploy` or `~G_/_v1_/_Namespace|test-ns/test-svc`
+Legacy format: `apps_v1_Deployment|test-ns|test-deploy` or `~G_v1_Namespace|test-ns|test-svc`
 
 New format: `apps/Deployment/test-ns/test-deploy` or `_/Service/test-ns/test-svc`
 

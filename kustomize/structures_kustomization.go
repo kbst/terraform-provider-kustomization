@@ -9,19 +9,24 @@ func flattenKustomizationIDs(rm resmap.ResMap, legacy bool) (ids []string, idsPr
 	p1 := []string{}
 	p2 := []string{}
 	for _, id := range rm.AllIds() {
-		versionLessId, err := convertKustomizeToTerraform(id.String(), legacy)
+		kustomizationId := id.String()
+		kr, err := parseKustomizationId(kustomizationId)
 		if err != nil {
 			return nil, nil, err
 		}
-		ids = append(ids, versionLessId)
+		providerId := kustomizationId
+		if !legacy {
+			providerId = kr.toString()
+		}
+		ids = append(ids, providerId)
 
-		p := determinePrefix(id.Gvk)
+		p := determinePrefix(kr)
 		if p < 5 {
-			p0 = append(p0, versionLessId)
+			p0 = append(p0, providerId)
 		} else if p == 9 {
-			p2 = append(p2, versionLessId)
+			p2 = append(p2, providerId)
 		} else {
-			p1 = append(p1, versionLessId)
+			p1 = append(p1, providerId)
 		}
 	}
 

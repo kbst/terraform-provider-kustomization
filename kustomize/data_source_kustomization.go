@@ -10,11 +10,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/types"
-	"sigs.k8s.io/kustomize/kyaml/resid"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 func getIDFromResources(rm resmap.ResMap) (s string, err error) {
@@ -31,7 +30,7 @@ func getIDFromResources(rm resmap.ResMap) (s string, err error) {
 	return s, nil
 }
 
-func determinePrefix(gvk resid.Gvk) (p uint32) {
+func determinePrefix(kr *KubernetesResource) (p uint32) {
 	// Default prefix to 5
 	p = 5
 
@@ -39,7 +38,7 @@ func determinePrefix(gvk resid.Gvk) (p uint32) {
 		"Namespace",
 		"CustomResourceDefinition",
 	} {
-		if strings.HasPrefix(gvk.Kind, k) {
+		if strings.HasPrefix(kr.Kind, k) {
 			p = 1
 		}
 	}
@@ -48,7 +47,7 @@ func determinePrefix(gvk resid.Gvk) (p uint32) {
 		"MutatingWebhookConfiguration",
 		"ValidatingWebhookConfiguration",
 	} {
-		if strings.HasPrefix(gvk.Kind, k) {
+		if strings.HasPrefix(kr.Kind, k) {
 			p = 9
 		}
 	}
@@ -73,8 +72,8 @@ func prefixHash(p uint32, h uint32) int {
 func idSetHash(v interface{}) int {
 	id := v.(string)
 
-	gvk := resid.GvkFromString(id)
-	p := determinePrefix(gvk)
+	kr := mustParseEitherIdFormat(id)
+	p := determinePrefix(kr)
 	h := crc32.ChecksumIEEE([]byte(id))
 
 	return prefixHash(p, h)
