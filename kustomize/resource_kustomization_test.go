@@ -406,7 +406,7 @@ func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_upgradeAPIVersion(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path) + `
+	return testAccDataSourceKustomizationConfig_basic(path, false) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-upgrade-api-version"]
 }
