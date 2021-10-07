@@ -52,8 +52,6 @@ For the easiest way to get started, [visit the official Kubestack quickstart](ht
 4. Set-up Automation
     * Integrate CI/CD to automate changes following Kubestack's GitOps workflow.
 
-See the [`tests`](./tests) directory for an example of how to extend this towards multi-cluster and/or multi-cloud.
-
 
 ## Getting Help
 
