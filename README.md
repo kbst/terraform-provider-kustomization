@@ -3,7 +3,6 @@
 </p>
 
 <h1 align="center">Terraform Provider Kustomize</h1>
-<h3 align="center">Terraform Provider for the Kubestack Gitops Framework</h3>
 
 <div align="center">
 
@@ -38,25 +37,10 @@ The Terraform provider for Kustomize is available from the [Terraform registry](
 
 Please refer to the [documentation](https://registry.terraform.io/providers/kbst/kustomization/latest/docs) for information on how to use the `kustomization_build` and `kustomization_overlay` data sources, or the `kustomization_resource` resource.
 
-This provider is maintained as part of the [Terraform GitOps framework Kubestack](https://www.kubestack.com/).
-
-
-## Getting Started with Kubestack
-
-For the easiest way to get started, [visit the official Kubestack quickstart](https://www.kubestack.com/infrastructure/documentation/quickstart). This tutorial will help you get started with the Kubestack GitOps framework. It is divided into three steps.
-
-1. Develop Locally
-    * Scaffold your repository and tweak your config in a local development environment that simulates your actual cloud configuration using Kubernetes in Docker (KinD).
-3. Provision Infrastructure
-    * Set-up cloud prerequisites and bootstrap Kubestack's environment and clusters on your cloud provider for the first time.
-4. Set-up Automation
-    * Integrate CI/CD to automate changes following Kubestack's GitOps workflow.
+This is a standalone Terraform Provider, but is also used in the [Terraform GitOps framework Kubestack](https://www.kubestack.com/).
 
 
 ## Getting Help
-
-**Official Documentation**  
-Refer to the [official documentation](https://www.kubestack.com/framework/documentation) for a deeper dive into how to use and configure Kubetack.
 
 **Community Help**  
 If you have any questions while following the tutorial, join the [#kubestack](https://app.slack.com/client/T09NY5SBT/CMBCT7XRQ) channel on the Kubernetes community. To create an account request an [invitation](https://slack.k8s.io/).
