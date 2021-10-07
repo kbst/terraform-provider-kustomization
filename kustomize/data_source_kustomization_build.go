@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
-	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 func dataSourceKustomization() *schema.Resource {
@@ -69,5 +69,5 @@ func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("kustomizationBuild: %s", err)
 	}
 
-	return setGeneratedAttributes(d, rm)
+	return setGeneratedAttributes(d, rm, m.(*Config).LegacyIDs)
 }

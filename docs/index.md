@@ -21,7 +21,7 @@ terraform {
   required_providers {
     kustomization = {
       source  = "kbst/kustomization"
-      version = "0.5.0"
+      version = "0.7.0"
     }
   }
 }
@@ -46,13 +46,43 @@ provider "kustomization" {
 - `kubeconfig_raw` - Raw kubeconfig file. If `kubeconfig_raw` is set, `kubeconfig_path` is ignored.
 - `kubeconfig_incluster` - Set to `true` when running inside a kubernetes cluster.
 - `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is used.
+- `legacy_id_format` - currently defaults to `true` for backward compability, will default to `false` in future releases and be removed later again
+
+## Migrating resource IDs from legacy format to desired format
+
+To allow the kustomization provider to manage API version upgrades, the version has been removed
+from resource IDs. As this is a breaking change, we are moving to what should be a nicer format
+
+Legacy format: `apps_v1_Deployment|test-ns|test-deploy` or `~G_v1_Namespace|test-ns|test-svc`
+
+New format: `apps/Deployment/test-ns/test-deploy` or `_/Service/test-ns/test-svc`
+
+The general form is `group/Kind/namespace/name` with `_` as a placeholder for empty values (e.g. `_/Namespace/_/test-namespace`)
+
+To use the new format of resource IDs, set `legacy_id_format` to `false` in the provider configuration and then migrate the existing state to use the new ID format.
+```
+terraform state list | while read line; do
+  newstate=$(echo $line | sed -e 's:.*\["\([^_]*\)_\([^_]\)*_\([^|]*\)\|\([^|]*\)\|\([^"]*\)"\]:\1/\3/\4/\5:' -e 's/~[GX]/_/g')
+  terraform state mv $line $newstate
+done
+```
 
 ## Imports
 
-To import existing Kubernetes resources into the Terraform state, use a command like below and replace `apps_v1_Deployment|test-basic|test` accordingly.
+### New format
+
+Set `legacy_id_format` to `false` in the provider settings and then run, for example:
+
+```
+terraform import 'kustomization_resource.test["apps/Deployment/test-namespace/test-deployment"]' apps/Deployment/test-namespace/test-deployment
+```
+
+### Legacy ID format
+
+With `legacy_id_format` set to `true` (currently the default), use a command like below and replace `apps_v1_Deployment|test-namespace|test-deployment` accordingly.
 
 -> Please note the single quotes required for most shells.
 
 ```
-terraform import 'kustomization_resource.test["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
+terraform import 'kustomization_resource.test["apps_v1_Deployment|test-namespace|test-deployment"]' 'apps_v1_Deployment|test-namespace|test-deployment'
 ```

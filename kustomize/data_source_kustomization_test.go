@@ -5,27 +5,26 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sigs.k8s.io/kustomize/kyaml/resid"
 )
 
 func TestDeterminePrefix(t *testing.T) {
 	for _, id := range residListFirst {
-		gvk := resid.GvkFromString(id)
-		p := determinePrefix(gvk)
+		kr := mustParseEitherIdFormat(id)
+		p := determinePrefix(kr)
 		e := uint32(1)
 		assert.Equal(t, e, p, nil)
 	}
 
 	for _, id := range residListDefault {
-		gvk := resid.GvkFromString(id)
-		p := determinePrefix(gvk)
+		kr := mustParseEitherIdFormat(id)
+		p := determinePrefix(kr)
 		e := uint32(5)
 		assert.Equal(t, e, p, nil)
 	}
 
 	for _, id := range residListLast {
-		gvk := resid.GvkFromString(id)
-		p := determinePrefix(gvk)
+		kr := mustParseEitherIdFormat(id)
+		p := determinePrefix(kr)
 		e := uint32(9)
 		assert.Equal(t, e, p, nil)
 	}
@@ -63,9 +62,7 @@ func TestIdSetHash(t *testing.T) {
 	setIDs := []int{}
 
 	for _, s := range idList {
-		rid := resid.FromString(s)
-
-		f := idSetHash(rid.String())
+		f := idSetHash(s)
 
 		assert.NotContains(t, setIDs, f, nil)
 		setIDs = append(setIDs, f)

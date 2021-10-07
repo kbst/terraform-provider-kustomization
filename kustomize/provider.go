@@ -23,6 +23,8 @@ type Config struct {
 	Client dynamic.Interface
 	Mapper *restmapper.DeferredDiscoveryRESTMapper
 	Mutex  *sync.Mutex
+	// whether legacy IDs are produced or not
+	LegacyIDs bool
 }
 
 // Provider ...
@@ -67,6 +69,13 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				Default:     "",
 				Description: "Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.",
+			},
+			"legacy_id_format": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Deprecated:  "legacy_id_format will be set to false in a future version and be removed in a further later version",
+				Description: "If legacy_id_format is true, then resource IDs will look like group_version_kind|namespace|name. If legacy_id_format is false, then resource IDs will look like group/kind/namespace/name",
 			},
 		},
 	}
@@ -134,7 +143,9 @@ func Provider() *schema.Provider {
 		// https://github.com/kubernetes-sigs/kustomize/issues/3659
 		mu := &sync.Mutex{}
 
-		return &Config{client, mapper, mu}, nil
+		legacyIDs := d.Get("legacy_id_format").(bool)
+
+		return &Config{client, mapper, mu, legacyIDs}, nil
 	}
 
 	return p
