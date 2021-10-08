@@ -1,6 +1,6 @@
 module github.com/kbst/terraform-provider-kustomize
 
-go 1.12
+go 1.16
 
 require (
 	github.com/hashicorp/terraform-plugin-sdk v1.16.0
@@ -13,3 +13,5 @@ require (
 	sigs.k8s.io/kustomize/api v0.10.0
 	sigs.k8s.io/kustomize/kyaml v0.12.0
 )
+
+require golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6 // indirect
