@@ -125,7 +125,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-basic"]
+	value = data.kustomization_overlay.test.manifests["_/Namespace/_/test-basic"]
 }
 `
 }
@@ -162,7 +162,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-basic"]
+	value = data.kustomization_overlay.test.manifests["_/Namespace/_/test-basic"]
 }
 `
 }
@@ -195,7 +195,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|from-component-6ct58987ht"]
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/from-component-6ct58987ht"]
 }
 `
 }
@@ -252,11 +252,11 @@ data "kustomization_overlay" "test" {
 }
 
 output "check_cm1" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap1"]
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/test-configmap1"]
 }
 
 output "check_cm2" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap2-5tgmgc9cmf"]
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/test-configmap2-5tgmgc9cmf"]
 }
 `
 }
@@ -291,7 +291,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-overlay-namespace"]
+	value = data.kustomization_overlay.test.manifests["_/Namespace/_/test-overlay-namespace"]
 }
 
 `
@@ -328,7 +328,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Service|test-basic|test-test-test"]
+	value = data.kustomization_overlay.test.manifests["_/Service/test-basic/test-test-test"]
 }
 
 `
@@ -362,7 +362,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Namespace|~X|test-basic"]
+	value = data.kustomization_overlay.test.manifests["_/Namespace/_/test-basic"]
 }
 
 `
@@ -398,7 +398,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-transformer-config|test"]
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-transformer-config/test"]
 }
 `
 }
@@ -459,7 +459,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|testcm-6ct58987ht"]
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/testcm-6ct58987ht"]
 }
 `
 }
@@ -511,11 +511,11 @@ data "kustomization_overlay" "test" {
 }
 
 output "check_configmap" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_ConfigMap|~X|test-configmap"]
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/test-configmap"]
 }
 
 output "check_secret" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret"]
+	value = data.kustomization_overlay.test.manifests["_/Secret/_/test-secret"]
 }
 `
 }
@@ -553,7 +553,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-basic/test"]
 }
 `
 }
@@ -610,11 +610,11 @@ data "kustomization_overlay" "test" {
 }
 
 output "check_dep" {
-	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-basic/test"]
 }
 
 output "check_ingress" {
-	value = data.kustomization_overlay.test.manifests["networking.k8s.io_v1beta1_Ingress|test-basic|test"]
+	value = data.kustomization_overlay.test.manifests["networking.k8s.io/Ingress/test-basic/test"]
 }
 `
 }
@@ -650,7 +650,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-basic/test"]
 }
 `
 }
@@ -707,11 +707,11 @@ data "kustomization_overlay" "test" {
 }
 
 output "check_cm1" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret1"]
+	value = data.kustomization_overlay.test.manifests["_/Secret/_/test-secret1"]
 }
 
 output "check_cm2" {
-	value = data.kustomization_overlay.test.manifests["~G_v1_Secret|~X|test-secret2-h55cfd6gfg"]
+	value = data.kustomization_overlay.test.manifests["_/Secret/_/test-secret2-h55cfd6gfg"]
 }
 `
 }
@@ -768,7 +768,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["apps_v1_Deployment|test-basic|test"]
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-basic/test"]
 }
 `
 }
@@ -895,15 +895,15 @@ module "test" {
 }
 
 output "check_dep" {
-	value = module.test.kustomization.manifests["apps_v1_Deployment|test-module|tp-test-ts"]
+	value = module.test.kustomization.manifests["apps/Deployment/test-module/tp-test-ts"]
 }
 
 output "check_cm" {
-	value = module.test.kustomization.manifests["~G_v1_ConfigMap|test-module|tp-ocm-ts"]
+	value = module.test.kustomization.manifests["_/ConfigMap/test-module/tp-ocm-ts"]
 }
 
 output "check_s" {
-	value = module.test.kustomization.manifests["~G_v1_Secret|test-module|tp-os-ts-46f8b28mk5"]
+	value = module.test.kustomization.manifests["_/Secret/test-module/tp-os-ts-46f8b28mk5"]
 }
 `, modulePath, modulePath)
 }

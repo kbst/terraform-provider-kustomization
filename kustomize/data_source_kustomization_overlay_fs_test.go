@@ -50,11 +50,11 @@ data "kustomization_overlay" "test2" {
 }
 
 output "check1" {
-	value = data.kustomization_overlay.test1.manifests["~G_v1_Namespace|~X|test-overlay1"]
+	value = data.kustomization_overlay.test1.manifests["_/Namespace/_/test-overlay1"]
 }
 
 output "check2" {
-	value = data.kustomization_overlay.test2.manifests["~G_v1_Namespace|~X|test-overlay2"]
+	value = data.kustomization_overlay.test2.manifests["_/Namespace/_/test-overlay2"]
 }
 
 `
