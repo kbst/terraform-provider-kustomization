@@ -48,23 +48,47 @@ provider "kustomization" {
 - `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is used.
 - `legacy_id_format` - currently defaults to `true` for backward compability, will default to `false` in future releases and be removed later again
 
-## Migrating resource IDs from legacy format to desired format
+## Migrating resource IDs from legacy format to format enabling API version upgrades
 
-To allow the kustomization provider to manage API version upgrades, the version has been removed
-from resource IDs. As this is a breaking change, we are moving to what should be a nicer format
+To allow the kustomization provider to manage API version upgrades, the version has been removed from resource IDs.
+As this is a breaking change, we provide a helper script to move resources in the state.
+If you choose not to move resources in the state, a destroy and recreate of all resources managed by the provider will be required.
+We are also taking this as an opportunity, to refactor the ID format.
 
-Legacy format: `apps_v1_Deployment|test-ns|test-deploy` or `~G_v1_Namespace|test-ns|test-svc`
+ * Legacy format: `apps_v1_Deployment|test-ns|test-deploy` or `~G_v1_Service|test-ns|test-svc`
+ * New format: `apps/Deployment/test-ns/test-deploy` or `_/Service/test-ns/test-svc`
 
-New format: `apps/Deployment/test-ns/test-deploy` or `_/Service/test-ns/test-svc`
-
-The general form is `group/Kind/namespace/name` with `_` as a placeholder for empty values (e.g. `_/Namespace/_/test-namespace`)
+The general form is `group/Kind/namespace/name` with `_` as a placeholder for empty values (e.g. `_/Namespace/_/test-namespace`).
 
 To use the new format of resource IDs, set `legacy_id_format` to `false` in the provider configuration and then migrate the existing state to use the new ID format.
+The commands below will create a file `state_mv.sh` with one `terraform state mv` command per resource.
+
+```shell
+cat > migrate.py <<'EOF'
+import sys
+import re
+
+for si in sys.stdin.readlines():
+
+    if not "kustomization_resource" in si:
+        continue
+
+    so = re.sub(r"(.*)\[\"([^_]*)\_[^_]*\_([^|]*)\|([^|]*)\|([^\"]*)\"\]",
+                r'\1["\2/\3/\4/\5"]', si)
+
+    so = re.sub(r"\~[GX]", r"_", so)
+
+    print(f"terraform state mv '{si.strip()}' '{so.strip()}'")
+
+EOF
+
+terraform state list | python3 migrate.py > state_mv.sh
 ```
-terraform state list | while read line; do
-  newstate=$(echo $line | sed -e 's:.*\["\([^_]*\)_\([^_]\)*_\([^|]*\)\|\([^|]*\)\|\([^"]*\)"\]:\1/\3/\4/\5:' -e 's/~[GX]/_/g')
-  terraform state mv $line $newstate
-done
+
+After carefully inspecting the generated commands in `state_mv.sh`, you can execute them using:
+
+```shell
+bash state_mv.sh
 ```
 
 ## Imports
