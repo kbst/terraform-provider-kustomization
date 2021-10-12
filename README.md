@@ -83,6 +83,77 @@ In order to test the provider, run the acceptance tests using `make test`. You h
 make test
 ```
 
+### Running the provider under debug
+
+Running in debug mode is a four step process - launch the plugin in debug mode under delve, connect your IDE to delve, connect terraform to the plugin, and
+then run terraform. Instructions here are for Visual Studio Code, configuring other IDEs is likely to be a similar process
+
+* Ensure you have [`delve` installed](https://github.com/go-delve/delve/tree/master/Documentation/installation)
+* Build the plugin locally using `go build ./...`
+* From the terraform repository you wish to debug, run the following
+  ```
+  PLUGIN_PROTOCOL_VERSIONS=5 dlv exec --api-version=2 --listen=127.0.0.1:49188 --headless /path/to/terraform-provider-kustomization/terraform-provider-kustomize -- --debug
+  ```
+  If you run this outside of the terraform repository (e.g. in the plugin source directory), kustomize gets very confused when trying to find files
+* In Visual Studio Code, add the [following configuration to launch.json](https://code.visualstudio.com/docs/editor/debugging#_launch-configurations)
+  ```
+    {
+        "name": "Connect to server",
+        "type": "go",
+        "request": "attach",
+        "mode": "remote",
+        "remotePath": "${workspaceFolder}",
+        "port": 49188,
+        "host": "127.0.0.1",
+        "apiVersion": 2,
+        "env": {
+            "KUBECONFIG_PATH": "${HOME}/.kube/config"
+        },
+        "dlvLoadConfig": {
+            "followPointers": true,
+            "maxVariableRecurse": 1,
+            "maxStringLen": 512,
+            "maxArrayValues": 64,
+            "maxStructFields": -1
+        }
+    }
+  ```
+* Click the debug button and start `Connect to server`.
+* From the terminal you started `dlv` from, you will see something like:
+  ```
+  Provider server started; to attach Terraform, set TF_REATTACH_PROVIDERS to the following:
+  {"registry.terraform.io/kbst/kustomization":{"Protocol":"grpc","Pid":13366,"Test":true,"Addr":{"Network":"unix","String":"/var/folders/7c/wdp684z11w1_6cj0d6lgl8hw0000gn/T/plugin2650218557"}}}
+  ```
+  Set this value using export `TF_REATTACH_PROVIDERS={"registry...}}}` in the terminal you want to run terraform from
+* Set any breakpoints you wish to use
+* Run terraform
+
+
+### Running a specific test in debug mode
+
+* Add the following configuration to .vscode/launch.json, updating the `TestFunctionNameGoesHere`
+  to the name of the function you want to test:
+
+  ```
+  {
+      "name": "Launch test function",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/kustomize",
+      "env": {
+          "TF_ACC": "1",
+          "KUBECONFIG_PATH": "${env:HOME}/.kube/config"
+      },
+      "args": [
+          "-test.v",
+          "-test.run",
+          "^TestFunctionNameGoesHere$",
+      ],
+  }
+  ```
+* Set any breakpoints you want to set
+* Click the debug button and choose "Launch test function" in the dropdown
 
 ## Kubestack Repositories
 * [kbst/terraform-kubestack](https://github.com/kbst/terraform-kubestack)  
