@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -366,6 +367,52 @@ resource "kustomization_resource" "ns" {
 
 resource "kustomization_resource" "ss" {
 	manifest = data.kustomization_build.test.manifests["apps/StatefulSet/test-update-recreate-statefulset/test"]
+}
+`
+}
+
+//
+//
+// Upgrade_API_Version Test
+func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial networking.k8s.io/v1beta1 ingress
+			{
+				Config: testAccResourceKustomizationConfig_upgradeAPIVersion("test_kustomizations/upgrade_api_version/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.ing", "id"),
+					testAccCheckManifestNestedString("kustomization_resource.ing", "networking.k8s.io/v1beta1", "apiVersion"),
+				),
+			},
+			//
+			//
+			// Update ingress to networking.k8s.io/v1
+			{
+				Config: testAccResourceKustomizationConfig_upgradeAPIVersion("test_kustomizations/upgrade_api_version/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.ing", "id"),
+					testAccCheckManifestNestedString("kustomization_resource.ing", "networking.k8s.io/v1", "apiVersion"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_upgradeAPIVersion(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-upgrade-api-version"]
+}
+
+resource "kustomization_resource" "ing" {
+	manifest = data.kustomization_build.test.manifests["networking.k8s.io/Ingress/test-upgrade-api-version/test-upgrade-api-version"]
 }
 `
 }
@@ -790,6 +837,36 @@ func testAccCheckManifestSelectorAbsent(n string, k string) resource.TestCheckFu
 		_, ok = matchLabels[k]
 		if ok {
 			return fmt.Errorf("Unexpected selector matchLabels: %s", k)
+		}
+
+		return nil
+	}
+}
+
+func testAccCheckManifestNestedString(n string, expected string, k ...string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		u, err := getResourceFromTestState(s, n)
+		if err != nil {
+			return err
+		}
+
+		resp, err := getResourceFromK8sAPI(u)
+		if err != nil {
+			return err
+		}
+
+		k8spath := strings.Join(k, ".")
+
+		actual, ok, err := k8sunstructured.NestedString(resp.Object, k...)
+		if !ok {
+			return fmt.Errorf("%s missing from resource %s", k8spath, n)
+		}
+		if err != nil {
+			return err
+		}
+
+		if actual != expected {
+			return fmt.Errorf("value %s of %s does not match expected %s", actual, k8spath, expected)
 		}
 
 		return nil

@@ -18,12 +18,12 @@ func TestLastAppliedConfig(t *testing.T) {
 	annotations := u.GetAnnotations()
 	count := len(annotations)
 	if count != 1 {
-		t.Errorf("TestLastAppliedConfig: incorect number of annotations, got: %d, want: %d.", count, 1)
+		t.Errorf("TestLastAppliedConfig: incorrect number of annotations, got: %d, want: %d.", count, 1)
 	}
 
 	lac := getLastAppliedConfig(u)
 	if lac != srcJSON {
-		t.Errorf("TestLastAppliedConfig: incorect annotation value, got: %s, want: %s.", srcJSON, lac)
+		t.Errorf("TestLastAppliedConfig: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
 	}
 }
 

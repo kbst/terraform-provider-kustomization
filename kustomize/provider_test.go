@@ -8,9 +8,6 @@ import (
 var testAccProviders map[string]terraform.ResourceProvider
 var testAccProvider *schema.Provider
 
-var testAccLegacyProviders map[string]terraform.ResourceProvider
-var testAccLegacyProvider *schema.Provider
-
 func init() {
 	testAccProvider = Provider()
 	testAccProviders = map[string]terraform.ResourceProvider{

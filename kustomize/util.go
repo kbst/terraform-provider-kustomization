@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 
 	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,7 +32,7 @@ func setLastAppliedConfig(u *k8sunstructured.Unstructured, srcJSON string) {
 }
 
 func getLastAppliedConfig(u *k8sunstructured.Unstructured) string {
-	return u.GetAnnotations()[lastAppliedConfig]
+	return strings.TrimRight(u.GetAnnotations()[lastAppliedConfig], "\r\n")
 }
 
 func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
@@ -50,7 +51,7 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 	setLastAppliedConfig(o, originalJSON)
 	setLastAppliedConfig(n, modifiedJSON)
 
-	mapping, err := mapper.RESTMapping(o.GroupVersionKind().GroupKind(), o.GroupVersionKind().Version)
+	mapping, err := mapper.RESTMapping(n.GroupVersionKind().GroupKind(), n.GroupVersionKind().Version)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -94,7 +95,6 @@ func getPatch(gvk k8sschema.GroupVersionKind, original []byte, modified []byte, 
 		patchType = k8stypes.MergePatchType
 
 		preconditions := []mergepatch.PreconditionFunc{
-			mergepatch.RequireKeyUnchanged("apiVersion"),
 			mergepatch.RequireKeyUnchanged("kind"),
 			mergepatch.RequireMetadataKeyUnchanged("name"),
 		}

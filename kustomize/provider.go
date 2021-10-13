@@ -67,14 +67,14 @@ func Provider() *schema.Provider {
 			"context": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Default:     "",
+				DefaultFunc: schema.EnvDefaultFunc("KUBECONFIG_CONTEXT", nil),
 				Description: "Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.",
 			},
 			"legacy_id_format": {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				Default:     true,
-				Deprecated:  "legacy_id_format will be set to false in a future version and be removed in a further later version",
+				Default:     false,
+				Deprecated:  "legacy_id_format will be removed in a future version",
 				Description: "If legacy_id_format is true, then resource IDs will look like group_version_kind|namespace|name. If legacy_id_format is false, then resource IDs will look like group/kind/namespace/name",
 			},
 		},
