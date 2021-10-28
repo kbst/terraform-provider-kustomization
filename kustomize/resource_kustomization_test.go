@@ -271,6 +271,81 @@ resource "kustomization_resource" "dep1" {
 `
 }
 
+// test that secret data is hidden
+func TestAccResourceKustomization_createSecret(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial config with a svc and deployment in a namespace
+			{
+				Config: testAccResourceKustomizationConfig_createSecret("test_kustomizations/basic/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckManifestNestedString("kustomization_resource.secret", "d29ybGQ=", "data", "hello"),
+				),
+			},
+			{
+				Config: testAccResourceKustomizationConfig_updateSecret("test_kustomizations/basic/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckManifestNestedString("kustomization_resource.secret", "YWdhaW4=", "data", "hello"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_createSecret(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+data "kustomization_overlay" "secret" {
+	secret_generator {
+		name = "test-secret"
+		namespace = "test-basic"
+		literals = [
+		  "hello=world"
+		]
+		options {
+			disable_name_suffix_hash = true
+		}
+	}
+}
+
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-basic"]
+}
+
+resource "kustomization_resource" "secret" {
+	manifest = data.kustomization_overlay.secret.manifests["_/Secret/test-basic/test-secret"]
+}
+`
+}
+
+func testAccResourceKustomizationConfig_updateSecret(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+data "kustomization_overlay" "secret" {
+	secret_generator {
+		name = "test-secret"
+		namespace = "test-basic"
+		literals = [
+		  "hello=again"
+		]
+		options {
+			disable_name_suffix_hash = true
+		}
+	}
+}
+
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-basic"]
+}
+
+resource "kustomization_resource" "secret" {
+	manifest = data.kustomization_overlay.secret.manifests["_/Secret/test-basic/test-secret"]
+}
+`
+}
+
 //
 //
 // Update_Recreate_Name_Or_Namespace_Change Test

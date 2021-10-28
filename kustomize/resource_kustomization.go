@@ -2,6 +2,7 @@ package kustomize
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,6 +18,49 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
+func kustomizationResourceSchemaV0() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		"manifest": {
+			Type:     schema.TypeString,
+			Required: true,
+		},
+	}
+}
+
+func kustomizationResourceV0() *schema.Resource {
+	return &schema.Resource{
+		Schema: kustomizationResourceSchemaV0(),
+	}
+}
+
+func kustomizationResourceSchemaV1() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		"manifest": {
+			Type:      schema.TypeString,
+			Required:  true,
+			Sensitive: true,
+		},
+		"resource": {
+			Type:     schema.TypeString,
+			Optional: true,
+			Computed: true,
+		},
+
+		"secret_data": {
+			Type:      schema.TypeString,
+			Sensitive: true,
+			Optional:  true,
+			Computed:  true,
+		},
+	}
+}
+
+func kustomizationResourceV1() *schema.Resource {
+	return &schema.Resource{
+		Schema: kustomizationResourceSchemaV1(),
+	}
+}
+
 func kustomizationResource() *schema.Resource {
 	return &schema.Resource{
 		Create:        kustomizationResourceCreate,
@@ -30,13 +74,72 @@ func kustomizationResource() *schema.Resource {
 			State: kustomizationResourceImport,
 		},
 
-		Schema: map[string]*schema.Schema{
-			"manifest": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+		Schema:        kustomizationResourceSchemaV1(),
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{
+			{
+				Version: 0,
+				Upgrade: v1StateUpgradeFunc,
+				Type:    kustomizationResourceV0().CoreConfigSchema().ImpliedType(),
 			},
 		},
 	}
+}
+
+func v1StateUpgradeFunc(rawState map[string]interface{}, meta interface{}) (map[string]interface{}, error) {
+	u, err := parseJSON(rawState["manifest"].(string))
+	if err != nil {
+		return nil, err
+	}
+	if u.GetKind() != "Secret" {
+		rawState["resource"] = rawState["manifest"]
+		rawState["secret_data"] = ""
+		return rawState, nil
+	}
+	rawState["secret_data"], rawState["resource"], err = extractSecretData(u)
+	return rawState, err
+}
+
+func extractSecretData(u *unstructured.Unstructured) (string, string, error) {
+	secretData, ok, err := unstructured.NestedMap(u.Object, "data")
+	secret := []byte{}
+	var updated *unstructured.Unstructured
+	if err != nil {
+		return "", "", err
+	}
+	if ok {
+		updated = u.DeepCopy()
+		unstructured.SetNestedField(updated.Object, "SENSITIVE", "data")
+		secret, err = json.Marshal(secretData)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	data, err := updated.MarshalJSON()
+	if err != nil {
+		return "", "", err
+	}
+	return string(data), string(secret), nil
+}
+
+func updateStateFromResponse(d *schema.ResourceData, u *unstructured.Unstructured) error {
+	manifest := getLastAppliedConfig(u)
+	d.Set("manifest", manifest)
+
+	secretData := ""
+	if u.GetKind() == "Secret" {
+		configured, err := parseJSON(manifest)
+		if err != nil {
+			return err
+		}
+		manifest, secretData, err = extractSecretData(configured)
+		if err != nil {
+			return err
+		}
+	}
+	d.Set("resource", manifest)
+	d.Set("secret_data", secretData)
+	return nil
 }
 
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
@@ -136,8 +239,6 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
-
 	return kustomizationResourceRead(d, m)
 }
 
@@ -173,7 +274,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
+	updateStateFromResponse(d, resp)
 
 	return nil
 }
@@ -184,8 +285,21 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
 
-	if !d.HasChange("manifest") {
-		return nil
+	modifiedSrcJSON := modifiedJSON.(string)
+	mu, err := parseJSON(modifiedSrcJSON)
+	if err != nil {
+		return logError(fmt.Errorf("JSON parse error: %s", err))
+	}
+	if mu.GetKind() == "Secret" {
+		cleanedResource, secretData, err := extractSecretData(mu)
+		if err != nil {
+			return logError(fmt.Errorf("Couldn't extract secret: %s", err))
+		}
+		d.SetNew("resource", string(cleanedResource))
+		d.SetNew("secret_data", string(secretData))
+	} else {
+		d.SetNew("resource", modifiedSrcJSON)
+		d.SetNew("secret_data", "")
 	}
 
 	originalSrcJSON := originalJSON.(string)
@@ -194,12 +308,6 @@ func kustomizationResourceDiff(d *schema.ResourceDiff, m interface{}) error {
 	}
 
 	ou, err := parseJSON(originalSrcJSON)
-	if err != nil {
-		return logError(fmt.Errorf("JSON parse error: %s", err))
-	}
-
-	modifiedSrcJSON := modifiedJSON.(string)
-	mu, err := parseJSON(modifiedSrcJSON)
 	if err != nil {
 		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
@@ -382,7 +490,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	id := string(patchResp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(patchResp))
+	updateStateFromResponse(d, patchResp)
 
 	return kustomizationResourceRead(d, m)
 }
@@ -501,7 +609,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 		)
 	}
 
-	d.Set("manifest", lac)
+	updateStateFromResponse(d, resp)
 
 	return []*schema.ResourceData{d}, nil
 }
