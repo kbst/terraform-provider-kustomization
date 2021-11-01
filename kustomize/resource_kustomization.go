@@ -292,7 +292,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 		if k8smeta.IsNoMatchError(err) {
 			// If the Kind does not exist in the K8s API,
 			// the resource can't exist either
-			return false, nil
+			return false, logError(fmt.Errorf("Can't find kind %s in API group %s", u.GroupVersionKind().Kind, u.GroupVersionKind().Group))
 		}
 		return false, err
 	}
