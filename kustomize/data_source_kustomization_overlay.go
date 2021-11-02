@@ -52,6 +52,28 @@ func getGeneratorOptions(o map[string]interface{}) *types.GeneratorOptions {
 	return g
 }
 
+func getPatchOptionsSchema() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"allow_kind_change": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"allow_name_change": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+		},
+	}
+}
+
+func getPatchOptions(o map[string]interface{}) map[string]bool {
+	po := make(map[string]bool)
+	po["allowKindChange"] = o["allow_kind_change"].(bool)
+	po["allowNameChange"] = o["allow_name_change"].(bool)
+	return po
+}
+
 func dataSourceKustomizationOverlay() *schema.Resource {
 	return &schema.Resource{
 		Read: kustomizationOverlay,
@@ -186,6 +208,12 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"options": {
+							Type:     schema.TypeList,
+							MaxItems: 1,
+							Optional: true,
+							Elem:     getPatchOptionsSchema(),
+						},
 						"path": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -550,6 +578,10 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 				kp.Target.Namespace = t["namespace"]
 				kp.Target.AnnotationSelector = t["annotation_selector"]
 				kp.Target.LabelSelector = t["label_selector"]
+			}
+			o := p["options"].([]interface{})
+			if len(o) == 1 && o[0] != nil {
+				kp.Options = getPatchOptions(o[0].(map[string]interface{}))
 			}
 
 			k.Patches = append(k.Patches, kp)

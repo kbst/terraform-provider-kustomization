@@ -325,6 +325,8 @@ Define [Kustomize patches](https://kubectl.docs.kubernetes.io/references/kustomi
 - `path` path to a patch file on disk
 - `patch` patch defined as an inline string
 - `target` patch target, specified by: `group`, `version`, `kind`, `name`, `namespace`, `label_selector`, `annotation_selector`
+- `options` - set `allow_kind_change` and/or `allow_name_change` to `true` to allow `kind` or `metadata.name` to be changed by the patch
+  (only relevant for strategic merge patches, JSON patches ignore this setting)
 
 #### Example
 
@@ -338,6 +340,21 @@ data "kustomization_overlay" "example" {
     path = "path/to/patch.yaml"
     target = {
       label_selector = "app=example,env=${terraform.workspace}"
+    }
+  }
+
+  patches {
+    target = {
+      kind = "Namespace"
+      name = "test-ns"
+    }
+    patch = <<-EOF
+      kind: Namespace
+      metadata:
+        name: new-ns
+    EOF
+    options {
+      allow_name_change = true
     }
   }
 
