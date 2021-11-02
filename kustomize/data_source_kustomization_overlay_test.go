@@ -907,3 +907,95 @@ output "check_s" {
 }
 `, modulePath, modulePath)
 }
+
+//
+//
+// Test patch options attr
+func TestDataSourceKustomizationOverlay_patchOptionsNoop(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationPatchOptionsConfigNoop(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_ns", `{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"test-basic"}}`),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationPatchOptionsConfigNoop() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/basic/initial",
+	]
+	patches {
+		target = {
+			kind = "Namespace"
+			name = "test-basic"
+		}
+		patch = <<-EOF
+			kind: Namespace
+			metadata:
+			  name: new-basic
+		EOF
+		options {
+			allow_name_change = false
+		}
+	}
+}
+
+output "check_ns" {
+	value = data.kustomization_overlay.test.manifests["_/Namespace/_/test-basic"]
+}
+`
+}
+
+// Test patch options attr(
+func TestDataSourceKustomizationOverlay_patchOptions(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationPatchOptionsConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_ns", `{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"new-basic"}}`),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationPatchOptionsConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/basic/initial",
+	]
+	patches {
+		target = {
+			kind = "Namespace"
+			name = "test-basic"
+		}
+		patch = <<-EOF
+			kind: Namespace
+			metadata:
+			  name: new-basic
+		EOF
+		options {
+			allow_name_change = true
+		}
+	}
+}
+
+output "check_ns" {
+	value = data.kustomization_overlay.test.manifests["_/Namespace/_/new-basic"]
+}
+`
+}
