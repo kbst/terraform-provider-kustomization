@@ -46,9 +46,11 @@ provider "kustomization" {
 - `kubeconfig_raw` - Raw kubeconfig file. If `kubeconfig_raw` is set, `kubeconfig_path` is ignored.
 - `kubeconfig_incluster` - Set to `true` when running inside a kubernetes cluster.
 - `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is used.
-- `legacy_id_format` - currently defaults to `true` for backward compability, will default to `false` in future releases and be removed later again
+- `legacy_id_format` - (Optional) Defaults to `false`. Provided for backward compability, set to `true` to use the legacy ID format.
 
 ## Migrating resource IDs from legacy format to format enabling API version upgrades
+
+-> Starting with version `0.7.0` the provider defaults to the new ID format. To use the legacy format set `legacy_id_format = true`.
 
 To allow the kustomization provider to manage API version upgrades, the version has been removed from resource IDs.
 As this is a breaking change, we provide a helper script to move resources in the state.
@@ -60,7 +62,8 @@ We are also taking this as an opportunity, to refactor the ID format.
 
 The general form is `group/Kind/namespace/name` with `_` as a placeholder for empty values (e.g. `_/Namespace/_/test-namespace`).
 
-To use the new format of resource IDs, set `legacy_id_format` to `false` in the provider configuration and then migrate the existing state to use the new ID format.
+To keep using the legacy format of resource IDs, set `legacy_id_format` to `true` in the provider configuration.
+
 The commands below will create a file `state_mv.sh` with one `terraform state mv` command per resource.
 
 ```shell
@@ -93,9 +96,9 @@ bash state_mv.sh
 
 ## Imports
 
-### New format
+### Default ID format
 
-Set `legacy_id_format` to `false` in the provider settings and then run, for example:
+With the default `legacy_id_format` set to `false` in the provider settings run, for example:
 
 ```
 terraform import 'kustomization_resource.test["apps/Deployment/test-namespace/test-deployment"]' apps/Deployment/test-namespace/test-deployment
@@ -103,7 +106,7 @@ terraform import 'kustomization_resource.test["apps/Deployment/test-namespace/te
 
 ### Legacy ID format
 
-With `legacy_id_format` set to `true` (currently the default), use a command like below and replace `apps_v1_Deployment|test-namespace|test-deployment` accordingly.
+With `legacy_id_format` set to `true`, use a command like below and replace `apps_v1_Deployment|test-namespace|test-deployment` accordingly.
 
 -> Please note the single quotes required for most shells.
 
