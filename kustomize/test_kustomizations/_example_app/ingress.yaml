@@ -9,6 +9,7 @@ spec:
   - http:
       paths:
       - path: /testpath
+        pathType: ImplementationSpecific
         backend:
           serviceName: test
           servicePort: 80

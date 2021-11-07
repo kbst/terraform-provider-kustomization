@@ -14,6 +14,7 @@ spec:
           serviceName: test-upgrade-api-version
           servicePort: 80
         path: /
+        pathType: ImplementationSpecific
   tls:
   - hosts:
     - test-upgrade-api-version.example.com
