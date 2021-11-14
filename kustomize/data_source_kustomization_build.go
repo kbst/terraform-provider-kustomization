@@ -26,6 +26,14 @@ func dataSourceKustomization() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"enable_helm": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"helm_path": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 			},
