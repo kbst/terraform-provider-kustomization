@@ -10,26 +10,42 @@ terraform {
   required_version = ">= 0.13"
 }
 
-data "kustomization_build" "test" {
-  path = "kustomize/test_kustomizations/basic/initial"
+module "test_nginx_ingress" {
+  source  = "kbst.xyz/catalog/nginx/kustomization"
+  version = "0.49.2-kbst.0"
+
+  configuration_base_key = "default"
+  configuration = {
+    default = {}
+  }
 }
 
-resource "kustomization_resource" "from_build" {
-  for_each = data.kustomization_build.test.ids
+module "test_cert_manager" {
+  source  = "kbst.xyz/catalog/cert-manager/kustomization"
+  version = "1.5.4-kbst.0"
 
-  manifest = data.kustomization_build.test.manifests[each.value]
+  configuration_base_key = "default"
+  configuration = {
+    default = {}
+  }
 }
 
-data "kustomization_overlay" "test" {
-  namespace = "test-overlay"
+module "test_prometheus" {
+  source  = "kbst.xyz/catalog/prometheus/kustomization"
+  version = "0.51.1-kbst.0"
 
-  resources = [
-    "kustomize/test_kustomizations/basic/initial"
-  ]
+  configuration_base_key = "default"
+  configuration = {
+    default = {}
+  }
 }
 
-resource "kustomization_resource" "from_overlay" {
-  for_each = data.kustomization_overlay.test.ids
+module "test_tekton" {
+  source  = "kbst.xyz/catalog/tektoncd/kustomization"
+  version = "0.28.1-kbst.0"
 
-  manifest = data.kustomization_overlay.test.manifests[each.value]
+  configuration_base_key = "default"
+  configuration = {
+    default = {}
+  }
 }
