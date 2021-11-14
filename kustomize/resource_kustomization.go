@@ -136,8 +136,6 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
-
 	return kustomizationResourceRead(d, m)
 }
 
@@ -173,7 +171,22 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
+	respJSON, err := resp.MarshalJSON()
+	if err != nil {
+		return logErrorForResource(
+			u,
+			fmt.Errorf("JSON error: %s", err),
+		)
+	}
+
+	manifest, err := flattenApiResponse(u.GroupVersionKind(), respJSON, []byte(srcJSON))
+	if err != nil {
+		return logErrorForResource(
+			u,
+			fmt.Errorf("manifest flatten error: %s", err),
+		)
+	}
+	d.Set("manifest", manifest)
 
 	return nil
 }
@@ -381,8 +394,6 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 
 	id := string(patchResp.GetUID())
 	d.SetId(id)
-
-	d.Set("manifest", getLastAppliedConfig(patchResp))
 
 	return kustomizationResourceRead(d, m)
 }
