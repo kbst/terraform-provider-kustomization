@@ -1,21 +1,25 @@
 package kustomize
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"sync"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-
+	"github.com/mitchellh/go-homedir"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+
 	"k8s.io/client-go/dynamic"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
-	"k8s.io/client-go/tools/clientcmd"
+	apimachineryschema "k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/mitchellh/go-homedir"
+
 )
 
 // Config ...
@@ -49,19 +53,19 @@ func Provider() *schema.Provider {
 				Type:         schema.TypeString,
 				Optional:     true,
 				DefaultFunc:  schema.EnvDefaultFunc("KUBECONFIG_PATH", nil),
-				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "kubernetes_provider_compat"},
 				Description:  "Path to a kubeconfig file. Can be set using KUBECONFIG_PATH env var",
 			},
 			"kubeconfig_raw": {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "kubernetes_provider_compat"},
 				Description:  "Raw kube config. If kubeconfig_raw is set, KUBECONFIG_PATH is ignored.",
 			},
 			"kubeconfig_incluster": {
 				Type:         schema.TypeBool,
 				Optional:     true,
-				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "kubernetes_provider_compat"},
 				Description:  "Set to true when running inside a kubernetes cluster. If kubeconfig_incluster is set, KUBECONFIG_PATH is ignored.",
 			},
 			"context": {
@@ -77,17 +81,73 @@ func Provider() *schema.Provider {
 				Deprecated:  "legacy_id_format will be removed in a future version",
 				Description: "If legacy_id_format is true, then resource IDs will look like group_version_kind|namespace|name. If legacy_id_format is false, then resource IDs will look like group/kind/namespace/name",
 			},
+			// Subset of the official kubernetes provider configuration https://github.com/hashicorp/terraform-provider-kubernetes/blob/main/kubernetes/provider.go
+			"kubernetes_provider_compat": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "kubernetes_provider_compat"},
+				Description: "Rudimentary compatibility with the official kubernetes_provider",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"host": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							DefaultFunc: schema.EnvDefaultFunc("KUBE_HOST", ""),
+							Description: "The hostname (in form of URI) of Kubernetes master.",
+						},
+						"cluster_ca_certificate": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							DefaultFunc: schema.EnvDefaultFunc("KUBE_CLUSTER_CA_CERT_DATA", ""),
+							Description: "PEM-encoded root certificates bundle for TLS authentication.",
+						},
+						"token": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							DefaultFunc: schema.EnvDefaultFunc("KUBE_TOKEN", ""),
+							Description: "Token to authenticate an service account",
+						},
+					},
+				},
+			},
 		},
 	}
 
 	p.ConfigureFunc = func(d *schema.ResourceData) (interface{}, error) {
 		var config *rest.Config
 		var err error
+		var compatOverrides *clientcmd.ConfigOverrides = nil
 
 		raw := d.Get("kubeconfig_raw").(string)
 		path := d.Get("kubeconfig_path").(string)
 		incluster := d.Get("kubeconfig_incluster").(bool)
 		context := d.Get("context").(string)
+
+		if v, ok := d.GetOk("kubernetes_provider_compat"); ok {
+			if spec, ok := v.([]interface{})[0].(map[string]interface{}); ok {
+				overrides := &clientcmd.ConfigOverrides{}
+				overrides.AuthInfo.Token = spec["token"].(string)
+				if v, ok := d.GetOk("token"); ok {
+					overrides.AuthInfo.Token = v.(string)
+				}
+				if v, ok := d.GetOk("cluster_ca_certificate"); ok {
+					overrides.ClusterInfo.CertificateAuthorityData = bytes.NewBufferString(v.(string)).Bytes()
+				}
+				if v, ok := d.GetOk("host"); ok {
+
+					host, _, err := rest.DefaultServerURL(v.(string), "", apimachineryschema.GroupVersion{}, true)
+					if err != nil {
+						return nil, fmt.Errorf("Failed to parse host: %s", err)
+					}
+					overrides.ClusterInfo.Server = host.String()
+				}
+				compatOverrides = overrides
+			} else {
+				return nil, fmt.Errorf("Failed to parse kubernetes_provider_compat")
+			}
+		}
+
 
 		if raw != "" {
 			config, err = getClientConfig([]byte(raw), context)
@@ -113,6 +173,15 @@ func Provider() *schema.Provider {
 			if err != nil {
 				return nil, fmt.Errorf("provider kustomization: couldn't load in cluster config: %s", err)
 			}
+		}
+
+		if compatOverrides != nil {
+			cc := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(&clientcmd.ClientConfigLoadingRules{}, compatOverrides)
+			config, err = cc.ClientConfig()
+			if err != nil {
+				return nil, fmt.Errorf("provider kustomization: failed to construct client based on kubernetes_provider_compat")
+			}
+
 		}
 
 		// empty default config required to support
@@ -175,7 +244,7 @@ func getClientConfig(data []byte, context string) (*rest.Config, error) {
 		return nil, err
 	}
 
-	var clientConfig clientcmd.ClientConfig = clientcmd.NewNonInteractiveClientConfig(
+	var clientConfig = clientcmd.NewNonInteractiveClientConfig(
 		*rawConfig,
 		context,
 		&clientcmd.ConfigOverrides{CurrentContext: context},
