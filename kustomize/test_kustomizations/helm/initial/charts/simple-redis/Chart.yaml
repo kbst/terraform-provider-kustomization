@@ -1,0 +1,4 @@
+apiVersion: v2
+description: A Simple Helm chart for running redis for CI
+name: simple-redis
+version: 0.1.1

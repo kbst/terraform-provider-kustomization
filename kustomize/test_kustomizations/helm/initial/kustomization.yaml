@@ -1,0 +1,4 @@
+helmCharts:
+- name: simple-redis
+  version: 0.1.1
+  repo: https://helm.tyk.io/public/helm/charts

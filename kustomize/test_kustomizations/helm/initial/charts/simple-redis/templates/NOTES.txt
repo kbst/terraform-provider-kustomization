@@ -1,0 +1,1 @@
+1. Connect to redis: {{ include "simple-redis.name" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.redis.port }}

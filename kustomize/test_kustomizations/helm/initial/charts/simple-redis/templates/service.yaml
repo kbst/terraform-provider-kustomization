@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "simple-redis.name" . }}
+  labels:
+    name: {{ include "simple-redis.name" . }}
+spec:
+  ports:
+    - port: {{ .Values.redis.port }}
+      targetPort: {{ .Values.redis.port }}
+  selector:
+    name: {{ include "simple-redis.name" . }}
