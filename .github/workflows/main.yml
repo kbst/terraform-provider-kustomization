@@ -33,6 +33,12 @@ jobs:
       with:
         go-version: "${{ env.GO_VERSION }}"
 
+    - name: Set up Helm
+      uses: 
+      uses: azure/setup-helm@v1
+      with:
+        version: '3.7.1'
+
     - name: 'Run TF acceptance tests (${{ matrix.runner }})'
       if: startsWith(matrix.runner, 'ubuntu-')
       env:
