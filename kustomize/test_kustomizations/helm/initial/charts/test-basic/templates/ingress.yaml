@@ -10,6 +10,6 @@ spec:
       paths:
       - path: /testpath
         backend:
-          serviceName: test
-          servicePort: 80
+          serviceName: {{ include "test-basic.name" . }}
+          servicePort: {{ .Values.nginx.port }}
 
