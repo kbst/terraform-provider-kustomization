@@ -86,7 +86,7 @@ func TestAccDataSourceKustomization_helmChart(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_build.test", "ids_prio.#", "3"),
 					resource.TestCheckResourceAttr("data.kustomization_build.test", "manifests.%", "4"),
 					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("deployment", {\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
 				),
 			},
 		},
