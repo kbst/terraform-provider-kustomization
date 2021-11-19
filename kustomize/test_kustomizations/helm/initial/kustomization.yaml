@@ -9,3 +9,4 @@ resources:
 helmCharts:
 - name: test-basic
   version: 0.0.1
+  namespace: not-used
