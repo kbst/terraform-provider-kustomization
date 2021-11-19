@@ -999,3 +999,43 @@ output "check_ns" {
 }
 `
 }
+
+// Test helm with common_annotations attr
+func TestDataSourceKustomizationOverlay_commonAnnotations_helm(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_commonAnnotations_helm(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"name\":\"redis\"}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_commonAnnotations_helm() string {
+	return `
+data "kustomization_overlay" "test" {
+	common_annotations = {
+		test-annotation: true
+	}
+
+	resources = [
+		"test_kustomizations/helm/initial",
+	]
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/redis"]
+}
+`
+}
