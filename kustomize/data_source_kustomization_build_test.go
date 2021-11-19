@@ -82,11 +82,11 @@ func TestAccDataSourceKustomization_helmChart(t *testing.T) {
 					resource.TestCheckResourceAttrSet("data.kustomization_build.test", "id"),
 					resource.TestCheckResourceAttrSet("data.kustomization_build.test", "path"),
 					resource.TestCheckResourceAttr("data.kustomization_build.test", "path", "test_kustomizations/helm/initial"),
-					resource.TestCheckResourceAttr("data.kustomization_build.test", "ids.#", "2"),
+					resource.TestCheckResourceAttr("data.kustomization_build.test", "ids.#", "4"),
 					resource.TestCheckResourceAttr("data.kustomization_build.test", "ids_prio.#", "3"),
-					resource.TestCheckResourceAttr("data.kustomization_build.test", "manifests.%", "2"),
-					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"name\":\"redis\"},\"name\":\"redis\"},\"spec\":{\"ports\":[{\"port\":6379,\"targetPort\":6379}],\"selector\":{\"name\":\"redis\"}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"name\":\"redis\",\"release\":\"RELEASE-NAME\"},\"name\":\"redis\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"name\":\"redis\"}},\"template\":{\"metadata\":{\"labels\":{\"name\":\"redis\"}},\"spec\":{\"containers\":[{\"image\":\"redis:6.0.10\",\"imagePullPolicy\":\"IfNotPresent\",\"name\":\"simple-redis\",\"ports\":[{\"containerPort\":6379,\"name\":\"redis-port\",\"protocol\":\"TCP\"}],\"resources\":{\"limits\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"},\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"}}}]}}}}"),
+					resource.TestCheckResourceAttr("data.kustomization_build.test", "manifests.%", "4"),
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
 				),
 			},
 		},
@@ -110,11 +110,11 @@ data "kustomization_build" "test" {
 }
 
 output "service" {
-	value = data.kustomization_build.test.manifests["_/Service/_/redis"]
+	value = data.kustomization_build.test.manifests["_/Service/test-basic/nginx"]
 }
 
 output "deployment" {
-	value = data.kustomization_build.test.manifests["apps/Deployment/_/redis"]
+	value = data.kustomization_build.test.manifests["apps/Deployment/test-basic/nginx"]
 }
 `, legacy, path)
 }

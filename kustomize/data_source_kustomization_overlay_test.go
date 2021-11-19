@@ -1010,7 +1010,7 @@ func TestDataSourceKustomizationOverlay_commonAnnotations_helm(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_commonAnnotations_helm(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"name\":\"redis\"},\"name\":\"redis\"},\"spec\":{\"ports\":[{\"port\":6379,\"targetPort\":6379}],\"selector\":{\"name\":\"redis\"}}}"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
 				),
 			},
 		},
@@ -1035,7 +1035,7 @@ data "kustomization_overlay" "test" {
 }
 
 output "check" {
-	value = data.kustomization_overlay.test.manifests["_/Service/_/redis"]
+	value = data.kustomization_overlay.test.manifests["_/Service/test-basic/nginx"]
 }
 `
 }
