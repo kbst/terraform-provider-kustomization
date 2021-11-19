@@ -1010,7 +1010,7 @@ func TestDataSourceKustomizationOverlay_commonAnnotations_helm(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_commonAnnotations_helm(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"name\":\"redis\"}}"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"name\":\"redis\"},\"name\":\"redis\"},\"spec\":{\"ports\":[{\"port\":6379,\"targetPort\":6379}],\"selector\":{\"name\":\"redis\"}}}"),
 				),
 			},
 		},
