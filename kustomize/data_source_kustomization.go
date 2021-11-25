@@ -128,5 +128,15 @@ func getKustomizeOptions(d *schema.ResourceData) (opts *krusty.Options) {
 		}
 	}
 
+	if kOpts["enable_helm"] != nil {
+		if kOpts["enable_helm"].(string) == "true" {
+			opts.PluginConfig = types.EnabledPluginConfig(types.BploUseStaticallyLinked)
+
+			if kOpts["helm_path"] != nil {
+				opts.PluginConfig.HelmConfig.Command = kOpts["helm_path"].(string)
+			}
+		}
+	}
+
 	return opts
 }
