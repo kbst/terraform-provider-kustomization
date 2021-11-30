@@ -1039,3 +1039,52 @@ output "check" {
 }
 `
 }
+
+// Test helm with helm_charts attr
+func TestDataSourceKustomizationOverlay_helm_charts_attr(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_attr(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_attr() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/initial/charts/"
+	}
+
+	helm_charts {
+		name = "test-basic"
+		version = "0.0.1"
+		namespace = "not-used"
+	}
+
+	namespace = "test-basic"
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "service" {
+	value = data.kustomization_overlay.test.manifests["_/Service/test-basic/nginx"]
+}
+
+output "deployment" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-basic/nginx"]
+}
+`
+}
