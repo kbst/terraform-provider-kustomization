@@ -11,6 +11,8 @@ data "kustomization_build" "test" {
   path = "test_kustomizations/basic/initial"
   kustomize_options = {
     load_restrictor = "none"
+    enable_helm = true
+    helm_path = "/path/to/helm"
   }
 }
 
@@ -25,6 +27,8 @@ data "kustomization_build" "test" {
 #### Child attributes
 
 - `load_restrictor` - setting this to `"none"` disables load restrictions
+- `enable_helm` - setting this to `true` enabled helm templating support
+- `helm_path` - set this to the path to find the helm executable (default: `"helmV3"`)
 
 ## Attribute Reference
 
