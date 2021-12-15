@@ -27,8 +27,8 @@ data "kustomization_build" "test" {
 #### Child attributes
 
 - `load_restrictor` - setting this to `"none"` disables load restrictions
-- `enable_helm` - setting this to `true` enabled helm templating support
-- `helm_path` - set this to the path to find the helm executable (default: `"helmV3"`)
+- `enable_helm` - setting this to `true` allows referencing helm charts in the kustomization.yaml
+- `helm_path` - set this to the path of the `helm` binary (defaults to: `helmV3`)
 
 ## Attribute Reference
 
