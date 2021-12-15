@@ -585,6 +585,46 @@ data "kustomization_overlay" "minecraft" {
 }
 ```
 
+### `helm_globals` - (optional)
+
+Define [Kustomize helmGlobals](https://github.com/kubernetes-sigs/kustomize/blob/master/examples/chart.md) in support of [helm_charts](#helm_charts)
+
+Must enable helm support via [kustomize_options](#kustomize_options) `enable_helm`
+
+#### Child attributes
+
+- `chart_home` directory to inflate remote helm charts or specify local chart base directory
+- `config_home` directory created by kustomize for the benefit of helm. kustomize sets `HELM_CACHE_HOME={config_home}/.cache` and `HELM_DATA_HOME={config_home}/.data`
+
+#### Example
+
+```hcl
+data "kustomization_overlay" "minecraft" {
+  helm_globals {
+    chart_home = "/local/chart/path/"
+  }
+
+  helm_charts {
+    # this is relative to `chart_home` (eg: ${chart_home}/charts/${name})
+    name = "minecraft"
+    version = "3.1.3"
+    release_name = "moria"
+    values_inline = <<VALUES
+      minecraftServer:
+        eula: true
+        difficulty: hard
+        rcon:
+          enabled: true
+    VALUES
+  }
+
+  kustomize_options = {
+    enable_helm = true
+    helm_path = "helm"
+  }
+}
+```
+
 ## Attribute Reference
 
 - `ids` - Set of Kustomize resource IDs.
