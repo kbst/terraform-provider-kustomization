@@ -1,0 +1,14 @@
+# Alternate values for test-basic
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2
+
+image:
+  repository: my-nginx
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "6.0.10"
+
+nginx:
+  port: 443
+

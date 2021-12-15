@@ -343,6 +343,10 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 						"values_merge": {
 							Type:     schema.TypeString,
 							Optional: true,
+							ValidateFunc: validation.StringInSlice(
+								[]string{"override", "replace", "merge"},
+								false,
+							),
 						},
 						"values_file": {
 							Type:     schema.TypeString,

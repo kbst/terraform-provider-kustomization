@@ -1040,7 +1040,7 @@ output "check" {
 `
 }
 
-// Test helm with helm_charts attr
+// Test helm_charts with kustomized namespace inclusion
 func TestDataSourceKustomizationOverlay_helm_charts_attr(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
@@ -1052,6 +1052,9 @@ func TestDataSourceKustomizationOverlay_helm_charts_attr(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
 					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "3"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids_prio.#", "3"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "3"),
 				),
 			},
 		},
@@ -1085,6 +1088,357 @@ output "service" {
 
 output "deployment" {
 	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-basic/nginx"]
+}
+
+`
+}
+
+// Test helm_charts release_name
+// if release_name were not set, there would be many RELEASE-NAME values in the rendered template
+func TestDataSourceKustomizationOverlay_helm_charts_releasename(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_releasename(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"my-release\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"my-release\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_releasename() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/initial/charts/"
+	}
+
+	helm_charts {
+		name = "test-releasename"
+		version = "0.0.1"
+		release_name = "my-release"
+	}
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "service" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/my-release"]
+}
+
+output "deployment" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/_/my-release"]
+}
+`
+}
+
+// Test helm_charts values_file
+// values_file overrides the default values that accompany the chart
+func TestDataSourceKustomizationOverlay_helm_charts_valuesFile(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_valuesFile(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// default values:
+					//   replicas = 1, port = 80,  image name = nginx
+					// overridden in alt-values.yaml
+					//   replicas = 2, port = 443, image name = my-nginx
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":2,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_valuesFile() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/initial/charts/"
+	}
+
+	helm_charts {
+		name = "test-basic"
+		version = "0.0.1"
+		values_file = "./test_kustomizations/helm/initial/alt-values.yaml"
+	}
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "service" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/nginx"]
+}
+
+output "deployment" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/_/nginx"]
+}
+`
+}
+
+// Test helm_charts values_inline
+// values_inline overrides the default values that accompany the chart, directly from HCL
+func TestDataSourceKustomizationOverlay_helm_charts_valuesInline(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_valuesInline(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// default values:
+					//   replicas = 1, port = 80,  image name = nginx
+					// overridden to:
+					//   replicas = 2, port = 443, image name = my-nginx
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":2,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_valuesInline() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/initial/charts/"
+	}
+
+	helm_charts {
+		name = "test-basic"
+		version = "0.0.1"
+		values_inline = <<VALUES
+      replicaCount: 2
+
+      image:
+        repository: my-nginx
+
+      nginx:
+        port: 443
+    VALUES
+	}
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "service" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/nginx"]
+}
+
+output "deployment" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/_/nginx"]
+}
+`
+}
+
+// Test helm_charts values_merge
+// values_merge determines how to merge values if both values_files and values_inline are used simultaneously
+func TestDataSourceKustomizationOverlay_helm_charts_valuesMerge(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_valuesMerge(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// values_file specifies:
+					//   image name = my-nginx
+					//   image tag = "6.0.10"
+					// values_inline specifies:
+					//   replicas = 3
+					//   image tag = "7.0.0"
+					//   port =-443
+					// merged to:
+					//   replicas = 3
+					//   port = 443
+					//   image name = my-nginx
+					//   image tag = "7.0.0"
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:7.0.0\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_valuesMerge() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/initial/charts/"
+	}
+
+	helm_charts {
+		name = "test-basic"
+		version = "0.0.1"
+		values_file = "./test_kustomizations/helm/initial/merge-values.yaml"
+		values_inline = <<VALUES
+      replicaCount: 3
+      image:
+        tag: 7.0.0
+      nginx:
+        port: 443
+    VALUES
+		values_merge = "override"
+	}
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "service" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/nginx"]
+}
+
+output "deployment" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/_/nginx"]
+}
+`
+}
+
+// Test helm_charts include_crds
+// this uses the same chart as TestDataSourceKustomizationOverlay_helm_charts_attr
+// only enabling the include_crds attribute as well
+func TestDataSourceKustomizationOverlay_helm_charts_includeCrds(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_includeCrds(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("crd", "{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"name\":\"crontabs.stable.example.com\"},\"spec\":{\"group\":\"stable.example.com\",\"names\":{\"kind\":\"CronTab\",\"plural\":\"crontabs\",\"shortNames\":[\"ct\"],\"singular\":\"crontab\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"spec\":{\"properties\":{\"cronSpec\":{\"type\":\"string\"},\"image\":{\"type\":\"string\"},\"replicas\":{\"type\":\"integer\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "4"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids_prio.#", "3"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "4"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_includeCrds() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/initial/charts/"
+	}
+
+	helm_charts {
+		name = "test-basic"
+		version = "0.0.1"
+		include_crds = true
+	}
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "service" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/nginx"]
+}
+
+output "deployment" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/_/nginx"]
+}
+
+output "crd" {
+	value = data.kustomization_overlay.test.manifests["apiextensions.k8s.io/CustomResourceDefinition/_/crontabs.stable.example.com"]
+}
+`
+}
+
+// Test helm_charts multiple charts in one kustomization overlay
+func TestDataSourceKustomizationOverlay_helm_charts_multiple_charts(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_multiple_charts(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("service_1", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment_1", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service_2", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"my-release\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment_2", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"my-release\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-releasename\",\"resources\":{}}]}}},\"status\":{}}"),
+					// 3 manifests from first chart, 3 from second chart
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "6"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "6"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_multiple_charts() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/initial/charts/"
+	}
+
+	helm_charts {
+		name = "test-releasename"
+		version = "0.0.1"
+		release_name = "my-release"
+	}
+
+	helm_charts {
+		name = "test-basic"
+		version = "0.0.1"
+	}
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "service_1" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/nginx"]
+}
+
+output "deployment_1" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/_/nginx"]
+}
+
+output "service_2" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/my-release"]
+}
+
+output "deployment_2" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/_/my-release"]
 }
 `
 }
