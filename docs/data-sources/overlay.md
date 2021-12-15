@@ -545,7 +545,7 @@ data "kustomization_overlay" "example" {
 
 Define [Kustomize helmCharts](https://github.com/kubernetes-sigs/kustomize/blob/master/examples/chart.md)
 
-Must enable helm support via [kustomize_options](#kustomize_options) `enable_helm`
+Must enable helm support via [kustomize_options](#kustomize_options---optional) `enable_helm`
 
 #### Child attributes
 
@@ -587,9 +587,9 @@ data "kustomization_overlay" "minecraft" {
 
 ### `helm_globals` - (optional)
 
-Define [Kustomize helmGlobals](https://github.com/kubernetes-sigs/kustomize/blob/master/examples/chart.md) in support of [helm_charts](#helm_charts)
+Define [Kustomize helmGlobals](https://github.com/kubernetes-sigs/kustomize/blob/master/examples/chart.md) in support of [helm_charts](#helm_charts---optional)
 
-Must enable helm support via [kustomize_options](#kustomize_options) `enable_helm`
+Must enable helm support via [kustomize_options](#kustomize_options---optional) `enable_helm`
 
 #### Child attributes
 
