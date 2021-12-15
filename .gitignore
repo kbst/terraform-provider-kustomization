@@ -3,3 +3,4 @@ terraform.d
 *.tfstate*
 crash.log
 dist/
+kustomize/test_kustomizations/helm/remote/

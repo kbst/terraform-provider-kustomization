@@ -1442,3 +1442,47 @@ output "deployment_2" {
 }
 `
 }
+
+// Test helm_charts remote repo
+func TestDataSourceKustomizationOverlay_helm_charts_repo(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_repo(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("rolebinding", "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"labels\":{\"app\":\"kube-prometheus-stack-alertmanager\",\"app.kubernetes.io/instance\":\"my-release\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/part-of\":\"kube-prometheus-stack\",\"app.kubernetes.io/version\":\"23.3.2\",\"chart\":\"kube-prometheus-stack-23.3.2\",\"heritage\":\"Helm\",\"release\":\"my-release\"},\"name\":\"my-release-kube-prometheus-alertmanager\",\"namespace\":\"default\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"my-release-kube-prometheus-alertmanager\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"my-release-kube-prometheus-alertmanager\",\"namespace\":\"default\"}]}"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "136"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "136"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_repo() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/remote/"
+	}
+	helm_charts {
+		name = "kube-prometheus-stack"
+		repo = "https://prometheus-community.github.io/helm-charts"
+		version = "23.3.2"
+		release_name = "my-release"
+	}
+
+	kustomize_options = {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "rolebinding" {
+	value = data.kustomization_overlay.test.manifests["rbac.authorization.k8s.io/RoleBinding/default/my-release-kube-prometheus-alertmanager"]
+}
+`
+}
