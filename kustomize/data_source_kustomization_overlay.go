@@ -16,6 +16,14 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
+func getHelmGlobals(hg map[string]interface{}) *types.HelmGlobals {
+	g := &types.HelmGlobals{}
+	g.ChartHome = hg["chart_home"].(string)
+	g.ConfigHome = hg["config_home"].(string)
+
+	return g
+}
+
 func getGeneratorOptionsSchema() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -284,6 +292,71 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
+				},
+			},
+			"helm_globals": &schema.Schema{
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"chart_home": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"config_home": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"helm_charts": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"version": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"repo": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"release_name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"namespace": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"include_crds": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"values_merge": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ValidateFunc: validation.StringInSlice(
+								[]string{"override", "replace", "merge"},
+								false,
+							),
+						},
+						"values_file": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"values_inline": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
 				},
 			},
 			"secret_generator": &schema.Schema{
@@ -629,6 +702,44 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 		k.Resources = convertListInterfaceToListString(
 			d.Get("resources").([]interface{}),
 		)
+	}
+
+	if d.Get("helm_globals") != nil {
+		hgs := d.Get("helm_globals").([]interface{})
+
+		if len(hgs) == 1 && hgs[0] != nil {
+			hg := hgs[0].(map[string]interface{})
+			k.HelmGlobals = getHelmGlobals(hg)
+		}
+	}
+
+	if d.Get("helm_charts") != nil {
+		hcs := d.Get("helm_charts").([]interface{})
+		for i := range hcs {
+			if hcs[i] == nil {
+				continue
+			}
+
+			hc := hcs[i].(map[string]interface{})
+			hca := types.HelmChart{}
+
+			hca.Name = hc["name"].(string)
+			hca.Version = hc["version"].(string)
+			hca.Repo = hc["repo"].(string)
+			hca.ReleaseName = hc["release_name"].(string)
+			hca.Namespace = hc["namespace"].(string)
+			hca.ValuesFile = hc["values_file"].(string)
+			hca.ValuesMerge = hc["values_merge"].(string)
+			hca.IncludeCRDs = hc["include_crds"].(bool)
+
+			hc_vi := make(map[string]interface{})
+			if err := yaml.Unmarshal([]byte(hc["values_inline"].(string)), &hc_vi); err != nil {
+				fmt.Printf("error: %v", err)
+			}
+			hca.ValuesInline = hc_vi
+
+			k.HelmCharts = append(k.HelmCharts, hca)
+		}
 	}
 
 	if d.Get("secret_generator") != nil {
