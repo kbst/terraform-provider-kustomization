@@ -269,6 +269,8 @@ data "kustomization_overlay" "example" {
 #### Child attributes
 
 - `load_restrictor` - setting this to `"none"` disables load restrictions
+- `enable_helm` - setting this to `true` allows referencing helm charts in the kustomization.yaml
+- `helm_path` - set this to the path of the `helm` binary (defaults to: `helmV3`)
 
 #### Example
 
@@ -276,6 +278,8 @@ data "kustomization_overlay" "example" {
 data "kustomization_overlay" "example" {
   kustomize_options = {
     load_restrictor = "none"
+    enable_helm = true
+    helm_path = "/path/to/helm"
   }
 }
 ```
