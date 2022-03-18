@@ -48,21 +48,21 @@ func Provider() *schema.Provider {
 			"kubeconfig_path": {
 				Type:         schema.TypeString,
 				Optional:     true,
-				DefaultFunc:  schema.EnvDefaultFunc("KUBECONFIG_PATH", nil),
+				DefaultFunc:  schema.MultiEnvDefaultFunc([]string{"KUBECONFIG_PATH", "KUBECONFIG"}, nil),
 				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
-				Description:  "Path to a kubeconfig file. Can be set using KUBECONFIG_PATH env var",
+				Description:  "Path to a kubeconfig file. Can be set using KUBECONFIG_PATH or KUBECONFIG env var, with KUBECONFIG_PATH taking priority",
 			},
 			"kubeconfig_raw": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
-				Description:  "Raw kube config. If kubeconfig_raw is set, KUBECONFIG_PATH is ignored.",
+				Description:  "Raw kube config. If kubeconfig_raw is set, KUBECONFIG_PATH and KUBECONFIG are ignored.",
 			},
 			"kubeconfig_incluster": {
 				Type:         schema.TypeBool,
 				Optional:     true,
 				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
-				Description:  "Set to true when running inside a kubernetes cluster. If kubeconfig_incluster is set, KUBECONFIG_PATH is ignored.",
+				Description:  "Set to true when running inside a kubernetes cluster. If kubeconfig_incluster is set, KUBECONFIG_PATH and KUBECONFIG are ignored.",
 			},
 			"context": {
 				Type:        schema.TypeString,

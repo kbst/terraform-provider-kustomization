@@ -42,17 +42,17 @@ This is a standalone Terraform Provider, but is also used in the [Terraform GitO
 
 ## Getting Help
 
-**Community Help**  
+**Community Help**
 If you have any questions while following the tutorial, join the [#kubestack](https://app.slack.com/client/T09NY5SBT/CMBCT7XRQ) channel on the Kubernetes community. To create an account request an [invitation](https://slack.k8s.io/).
 
-**Professional Services**  
+**Professional Services**
 For organizations interested in accelerating their GitOps journey, [professional services](https://www.kubestack.com/lp/professional-services) are available.
 
 
 ## Contributing
 Contributions to the Kubestack framework are welcome and encouraged. Before contributing, please read the [Contributing](./CONTRIBUTING.md) and [Code of Conduct](./CODE_OF_CONDUCT.md) Guidelines.
 
-One super simple way to contribute to the success of this project is to give it a star.  
+One super simple way to contribute to the success of this project is to give it a star.
 
 <div align="center">
 
@@ -77,7 +77,7 @@ To compile the provider, run `make build` as shown below. This will build the pr
 make build
 ```
 
-In order to test the provider, run the acceptance tests using `make test`. You have to set the `KUBECONFIG_PATH` environment variable to point the tests to a valid config file. Each tests uses an individual namespaces. [Kind](https://github.com/kubernetes-sigs/kind) or [Minikube](https://github.com/kubernetes/minikube) clusters work well for testing.
+In order to test the provider, run the acceptance tests using `make test`. You have to set the `KUBECONFIG_PATH` or `KUBECONFIG` environment variable to point the tests to a valid config file. Each tests uses an individual namespaces. [Kind](https://github.com/kubernetes-sigs/kind) or [Minikube](https://github.com/kubernetes/minikube) clusters work well for testing.
 
 ```sh
 make test
@@ -156,12 +156,11 @@ then run terraform. Instructions here are for Visual Studio Code, configuring ot
 * Click the debug button and choose "Launch test function" in the dropdown
 
 ## Kubestack Repositories
-* [kbst/terraform-kubestack](https://github.com/kbst/terraform-kubestack)  
+* [kbst/terraform-kubestack](https://github.com/kbst/terraform-kubestack)
     * Terraform GitOps Framework - Everything you need to build reliable automation for AKS, EKS and GKE Kubernetes clusters in one free and open-source framework.
-* [kbst/kbst](https://github.com/kbst/kbst)  
+* [kbst/kbst](https://github.com/kbst/kbst)
     * Kubestack Framework CLI - All-in-one CLI to scaffold your Infrastructure as Code repository and deploy your entire platform stack locally for faster iteration.
-* [kbst/terraform-provider-kustomization](https://github.com/kbst/terraform-provider-kustomization) (this repository)  
+* [kbst/terraform-provider-kustomization](https://github.com/kbst/terraform-provider-kustomization) (this repository)
     * Kustomize Terraform Provider - A Kubestack maintained Terraform provider for Kustomize, available in the [Terraform registry](https://registry.terraform.io/providers/kbst/kustomization/latest).
-* [kbst/catalog](https://github.com/kbst/catalog)  
+* [kbst/catalog](https://github.com/kbst/catalog)
     * Catalog of cluster services as Kustomize bases - Continuously tested and updated Kubernetes services, installed and customizable using native Terraform syntax.
-
