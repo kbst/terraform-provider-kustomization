@@ -49,7 +49,7 @@ jobs:
       env:
         KUBECONFIG_PATH: ${{ github.workspace }}/tests/fakekubeconfig
       run: |
-        go test -v ./kustomize
+        go test -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=ignore" -v ./kustomize
 
   compile_provider:
     runs-on: ubuntu-latest
