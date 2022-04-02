@@ -98,11 +98,19 @@ func TestAccResourceKustomization_importLegacyInvalidID(t *testing.T) {
 		//PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
+			{
+				Config: testAccResourceKustomizationConfig_legacy_basicInitial("test_kustomizations/basic/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.dep1", "id"),
+				),
+			},
 			//
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.invalid",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "invalidID",
 				ImportState:       true,
 				ImportStateVerify: true,
