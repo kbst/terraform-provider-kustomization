@@ -1,1 +1,1 @@
-FROM kubestack/framework:v0.13.0-beta.0-kind
+FROM kubestack/framework:v0.16.2-beta.0-kind

@@ -1,5 +1,7 @@
-clusters = {
-  kind_zero = {
+module "kind_zero" {
+  source = "github.com/kbst/terraform-kubestack//kind/cluster?ref=v0.16.2-beta.0"
+
+  configuration = {
     # Settings for Apps-cluster
     apps = {
       name_prefix = "kind"
@@ -9,8 +11,6 @@ clusters = {
       # uncommenting extra_nodes below will give you a cluster
       # with 3 control-plane nodes and 3 worker nodes
       # extra_nodes = "control-plane,control-plane,worker,worker,worker"
-
-      disable_default_ingress = true
     }
 
     # Settings for Ops-cluster
