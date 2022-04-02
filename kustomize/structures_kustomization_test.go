@@ -23,13 +23,13 @@ func TestFlattenLegacyKustomizationIDs(t *testing.T) {
 	expMerged = append(expMerged, idsPrio[2]...)
 	assert.ElementsMatch(t, expMerged, ids, nil)
 
-	expIds := []string{"~G_v1_Namespace|~X|test-basic", "apps_v1_Deployment|test-basic|test", "networking.k8s.io_v1beta1_Ingress|test-basic|test", "~G_v1_Service|test-basic|test"}
+	expIds := []string{"~G_v1_Namespace|~X|test-basic", "apps_v1_Deployment|test-basic|test", "networking.k8s.io_v1_Ingress|test-basic|test", "~G_v1_Service|test-basic|test"}
 	assert.ElementsMatch(t, expIds, ids, nil)
 
 	expP1 := []string{"~G_v1_Namespace|~X|test-basic"}
 	assert.ElementsMatch(t, expP1, idsPrio[0], nil)
 
-	expP2 := []string{"apps_v1_Deployment|test-basic|test", "networking.k8s.io_v1beta1_Ingress|test-basic|test", "~G_v1_Service|test-basic|test"}
+	expP2 := []string{"apps_v1_Deployment|test-basic|test", "networking.k8s.io_v1_Ingress|test-basic|test", "~G_v1_Service|test-basic|test"}
 	assert.ElementsMatch(t, expP2, idsPrio[1], nil)
 
 	expP3 := []string{}
