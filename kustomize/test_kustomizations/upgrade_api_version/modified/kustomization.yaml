@@ -1,8 +1,11 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-namespace: test-upgrade-api-version
-
 resources:
-- namespace.yaml
-- ingress.yaml
+- ../initial
+
+patches:
+- patch: |
+    - op: replace
+      path: /apiVersion
+      value: test.example.com/v1beta1
+  target:
+    group: test.example.com
+    version: v1alpha1

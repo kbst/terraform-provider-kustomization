@@ -381,24 +381,32 @@ func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
 		Steps: []resource.TestStep{
 			//
 			//
-			// Applying initial networking.k8s.io/v1beta1 ingress
+			// Applying initial test.example.com/v1alpha1 custom objects
 			{
 				Config: testAccResourceKustomizationConfig_upgradeAPIVersion("test_kustomizations/upgrade_api_version/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
-					resource.TestCheckResourceAttrSet("kustomization_resource.ing", "id"),
-					testAccCheckManifestNestedString("kustomization_resource.ing", "networking.k8s.io/v1beta1", "apiVersion"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.clusteredcrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.namespacedcrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.clusteredco", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.namespacedco", "id"),
+					testAccCheckManifestNestedString("kustomization_resource.clusteredco", "test.example.com/v1alpha1", "apiVersion"),
+					testAccCheckManifestNestedString("kustomization_resource.clusteredco", "test.example.com/v1alpha1", "apiVersion"),
 				),
 			},
 			//
 			//
-			// Update ingress to networking.k8s.io/v1
+			// Update custom objects to v1beta1
 			{
 				Config: testAccResourceKustomizationConfig_upgradeAPIVersion("test_kustomizations/upgrade_api_version/modified"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
-					resource.TestCheckResourceAttrSet("kustomization_resource.ing", "id"),
-					testAccCheckManifestNestedString("kustomization_resource.ing", "networking.k8s.io/v1", "apiVersion"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.clusteredcrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.namespacedcrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.clusteredco", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.namespacedco", "id"),
+					testAccCheckManifestNestedString("kustomization_resource.clusteredco", "test.example.com/v1beta1", "apiVersion"),
+					testAccCheckManifestNestedString("kustomization_resource.clusteredco", "test.example.com/v1beta1", "apiVersion"),
 				),
 			},
 		},
@@ -411,8 +419,20 @@ resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-upgrade-api-version"]
 }
 
-resource "kustomization_resource" "ing" {
-	manifest = data.kustomization_build.test.manifests["networking.k8s.io/Ingress/test-upgrade-api-version/test-upgrade-api-version"]
+resource "kustomization_resource" "clusteredcrd" {
+	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io/CustomResourceDefinition/_/clusteredcrds.test.example.com"]
+}
+
+resource "kustomization_resource" "namespacedcrd" {
+	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io/CustomResourceDefinition/_/namespacedcrds.test.example.com"]
+}
+
+resource "kustomization_resource" "clusteredco" {
+	manifest = data.kustomization_build.test.manifests["test.example.com/Clusteredcrd/_/clusteredco"]
+}
+
+resource "kustomization_resource" "namespacedco" {
+	manifest = data.kustomization_build.test.manifests["test.example.com/Namespacedcrd/test-upgrade-api-version/namespacedco"]
 }
 `
 }
