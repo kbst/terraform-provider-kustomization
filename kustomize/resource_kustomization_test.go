@@ -111,7 +111,7 @@ func TestAccResourceKustomization_importInvalidID(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"_/Namespace/_/test-basic\"]",
+				ResourceName:      "kustomization_resource.invalid",
 				ImportStateId:     "invalidID",
 				ImportState:       true,
 				ImportStateVerify: true,

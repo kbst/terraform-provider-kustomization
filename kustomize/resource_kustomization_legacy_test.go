@@ -56,7 +56,7 @@ func TestAccResourceKustomization_legacy_basic(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-basic\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "~G_v1_Namespace|~X|test-basic",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -102,7 +102,7 @@ func TestAccResourceKustomization_importLegacyInvalidID(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-basic\"]",
+				ResourceName:      "kustomization_resource.invalid",
 				ImportStateId:     "invalidID",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -164,7 +164,7 @@ func TestAccResourceKustomization_legacy_updateInplace(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-update-inplace\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "~G_v1_Namespace|~X|test-update-inplace",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -237,7 +237,7 @@ func TestAccResourceKustomization_legacy_updateRecreate(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-update-recreate\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "~G_v1_Namespace|~X|test-update-recreate",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -397,7 +397,7 @@ func TestAccResourceKustomization_legacy_webhook(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com\"]",
+				ResourceName:      "kustomization_resource.webhook",
 				ImportStateId:     "admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com",
 				ImportState:       true,
 				ImportStateVerify: true,
