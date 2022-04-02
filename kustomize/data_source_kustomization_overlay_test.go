@@ -1,16 +1,10 @@
 package kustomize
 
 import (
-	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/stretchr/testify/assert"
-	"sigs.k8s.io/kustomize/api/konfig"
-	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 //
@@ -772,149 +766,6 @@ output "check" {
 	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-basic/test"]
 }
 `
-}
-
-//
-//
-// Test module
-func TestDataSourceKustomizationOverlay_conflict(t *testing.T) {
-	fSys := filesys.MakeFsOnDisk()
-	for _, n := range konfig.RecognizedKustomizationFileNames() {
-		fSys.WriteFile(n, []byte{})
-
-		err := refuseExistingKustomization(fSys)
-		assert.EqualErrorf(
-			t,
-			err,
-			fmt.Sprintf("buildKustomizeOverlay: Can not build dynamic overlay, found %q in working directory.", n),
-			"",
-			nil,
-		)
-
-		fSys.RemoveAll(n)
-	}
-}
-
-//
-//
-// Test module
-func TestDataSourceKustomizationOverlay_module(t *testing.T) {
-
-	resource.Test(t, resource.TestCase{
-		IsUnitTest: true,
-		Providers:  testAccProviders,
-		Steps: []resource.TestStep{
-			{
-				Config: testKustomizationOverlayConfig_module(),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_dep", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"app\":\"test\",\"test-label\":\"true\"},\"name\":\"tp-test-ts\",\"namespace\":\"test-module\"},\"spec\":{\"replicas\":9,\"selector\":{\"matchLabels\":{\"app\":\"test\",\"test-label\":\"true\"}},\"strategy\":{},\"template\":{\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"app\":\"test\",\"test-label\":\"true\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"true\"},{\"name\":\"TESTVAR\",\"value\":\"tp-os-ts-46f8b28mk5\"}],\"image\":\"test\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
-					resource.TestCheckOutput("check_cm", "{\"apiVersion\":\"v1\",\"data\":{\"KEY1\":\"VALUE1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{\"kustomize_generated\":\"true\",\"test-annotation\":\"true\"},\"labels\":{\"test-label\":\"true\"},\"name\":\"tp-ocm-ts\",\"namespace\":\"test-module\"}}"),
-				),
-			},
-		},
-	})
-}
-
-func testKustomizationOverlayConfig_module() string {
-	moduleAbsPath, _ := filepath.Abs("test_module")
-	testKustomizationsAbsPath, _ := filepath.Abs("test_kustomizations")
-
-	modulePath := filepath.ToSlash(moduleAbsPath)
-	testKustomizationsPath := filepath.ToSlash(testKustomizationsAbsPath)
-
-	config := fmt.Sprintf(`
-module "test" {
-	source = %q
-
-	common_annotations = {
-		test-annotation = "true"
-	}
-
-	common_labels = {
-		test-label = "true"
-	}
-
-	config_map_generator = [{
-		name = "ocm"
-		literals = [
-			"KEY1=VALUE1"
-		]
-		options = {
-			disable_name_suffix_hash = true
-		}
-	}]
-
-	generator_options = {
-		annotations = {
-			"kustomize_generated" = "true"
-		}
-	}
-
-	images = [{
-		name = "nginx"
-		new_name = "test"
-	}]
-
-	name_prefix = "tp-"
-	namespace = "test-module"
-	name_suffix = "-ts"
-
-	patches = [
-		{
-			path = "%s/_test_files/deployment_patch_env.yaml"
-			patch = null
-			target = {}
-		}, {
-			path = null
-			patch = <<-EOF
-				- op: add
-				  path: /spec/template/spec/containers/0/env/-
-				  value: {"name": "TESTVAR", "value": "$(TEST_VAR)"}
-			EOF
-			target = {
-				group = "apps"
-				version = "v1"
-				kind = "Deployment"
-				name = "test"
-			}
-		}
-	]
-
-	replicas = [{
-		name = "test"
-		count = 9
-	}]
-
-	secret_generator = [{
-		name = "os"
-	}]
-
-	vars = [{
-		name = "TEST_VAR"
-		obj_ref = {
-			api_version = "v1"
-			kind = "Secret"
-			name = "os"
-		}
-	}]
-}
-
-output "check_dep" {
-	value = module.test.kustomization.manifests["apps/Deployment/test-module/tp-test-ts"]
-}
-
-output "check_cm" {
-	value = module.test.kustomization.manifests["_/ConfigMap/test-module/tp-ocm-ts"]
-}
-
-output "check_s" {
-	value = module.test.kustomization.manifests["_/Secret/test-module/tp-os-ts-46f8b28mk5"]
-}
-`, modulePath, testKustomizationsPath)
-
-	ioutil.WriteFile("/tmp/test.tf", []byte(config), 0644)
-
-	return config
 }
 
 //
