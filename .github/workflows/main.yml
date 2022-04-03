@@ -401,7 +401,7 @@ jobs:
           -v `pwd`/tests/kubestack-starter-kind:/infra \
           -v /var/run/docker.sock:/var/run/docker.sock \
           test-image:${{ github.sha }} \
-          terraform apply --auto-approve
+          terraform destroy --auto-approve
 
   goreleaser:
     runs-on: ubuntu-latest
