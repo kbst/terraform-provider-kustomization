@@ -1,6 +1,8 @@
 package kustomize
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,6 +26,39 @@ func TestLastAppliedConfig(t *testing.T) {
 	lac := getLastAppliedConfig(u)
 	if lac != srcJSON {
 		t.Errorf("TestLastAppliedConfig: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
+	}
+}
+
+func TestLastAppliedConfigCompressed(t *testing.T) {
+	filler := func(n int) string {
+		const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		b := make([]byte, n)
+		for i := range b {
+			b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		}
+    	return string(b)
+	}(256 * (1 << 10))
+
+	srcJSON := fmt.Sprintf("{\"apiVersion\": \"v1\", \"kind\": \"ConfigMap\", \"metadata\": {\"name\": \"test-unit\", \"namespace\": \"test-unit\"}, \"data\": {\"payload\": %q}}", filler)
+	u, err := parseJSON(srcJSON)
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
+	setLastAppliedConfig(u, srcJSON)
+
+	annotations := u.GetAnnotations()
+
+	_, ok := annotations[gzipLastAppliedConfig]
+	assert.Equal(t, true, ok, "TestLastAppliedConfigCompressed: did not have gzipLastAppliedConfig annotation")
+
+	count := len(annotations)
+	if count != 1 {
+		t.Errorf("TestLastAppliedConfigCompressed: incorrect number of annotations, got: %d, want: %d.", count, 1)
+	}
+
+	lac := getLastAppliedConfig(u)
+	if lac != srcJSON {
+		t.Errorf("TestLastAppliedConfigCompressed: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
 	}
 }
 
