@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,7 +65,7 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"_/Namespace/_/test-basic\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "_/Namespace/_/test-basic",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -107,11 +107,19 @@ func TestAccResourceKustomization_importInvalidID(t *testing.T) {
 		//PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
+			{
+				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial", false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.dep1", "id"),
+				),
+			},
 			//
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"_/Namespace/_/test-basic\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "invalidID",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -173,7 +181,7 @@ func TestAccResourceKustomization_updateInplace(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"_/Namespace/_/test-update-inplace\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "_/Namespace/_/test-update-inplace",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -246,7 +254,7 @@ func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"_/Namespace/_/test-update-recreate\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "_/Namespace/_/test-update-recreate",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -381,24 +389,32 @@ func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
 		Steps: []resource.TestStep{
 			//
 			//
-			// Applying initial networking.k8s.io/v1beta1 ingress
+			// Applying initial test.example.com/v1alpha1 custom objects
 			{
 				Config: testAccResourceKustomizationConfig_upgradeAPIVersion("test_kustomizations/upgrade_api_version/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
-					resource.TestCheckResourceAttrSet("kustomization_resource.ing", "id"),
-					testAccCheckManifestNestedString("kustomization_resource.ing", "networking.k8s.io/v1beta1", "apiVersion"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.clusteredcrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.namespacedcrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.clusteredco", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.namespacedco", "id"),
+					testAccCheckManifestNestedString("kustomization_resource.clusteredco", "test.example.com/v1alpha1", "apiVersion"),
+					testAccCheckManifestNestedString("kustomization_resource.clusteredco", "test.example.com/v1alpha1", "apiVersion"),
 				),
 			},
 			//
 			//
-			// Update ingress to networking.k8s.io/v1
+			// Update custom objects to v1beta1
 			{
 				Config: testAccResourceKustomizationConfig_upgradeAPIVersion("test_kustomizations/upgrade_api_version/modified"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
-					resource.TestCheckResourceAttrSet("kustomization_resource.ing", "id"),
-					testAccCheckManifestNestedString("kustomization_resource.ing", "networking.k8s.io/v1", "apiVersion"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.clusteredcrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.namespacedcrd", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.clusteredco", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.namespacedco", "id"),
+					testAccCheckManifestNestedString("kustomization_resource.clusteredco", "test.example.com/v1beta1", "apiVersion"),
+					testAccCheckManifestNestedString("kustomization_resource.clusteredco", "test.example.com/v1beta1", "apiVersion"),
 				),
 			},
 		},
@@ -411,8 +427,20 @@ resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-upgrade-api-version"]
 }
 
-resource "kustomization_resource" "ing" {
-	manifest = data.kustomization_build.test.manifests["networking.k8s.io/Ingress/test-upgrade-api-version/test-upgrade-api-version"]
+resource "kustomization_resource" "clusteredcrd" {
+	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io/CustomResourceDefinition/_/clusteredcrds.test.example.com"]
+}
+
+resource "kustomization_resource" "namespacedcrd" {
+	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io/CustomResourceDefinition/_/namespacedcrds.test.example.com"]
+}
+
+resource "kustomization_resource" "clusteredco" {
+	manifest = data.kustomization_build.test.manifests["test.example.com/Clusteredcrd/_/clusteredco"]
+}
+
+resource "kustomization_resource" "namespacedco" {
+	manifest = data.kustomization_build.test.manifests["test.example.com/Namespacedcrd/test-upgrade-api-version/namespacedco"]
 }
 `
 }
@@ -477,7 +505,7 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"apiextensions.k8s.io/CustomResourceDefinition/_/clusteredcrds.test.example.com\"]",
+				ResourceName:      "kustomization_resource.clusteredcrd",
 				ImportStateId:     "apiextensions.k8s.io/CustomResourceDefinition/_/clusteredcrds.test.example.com",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -545,7 +573,7 @@ func TestAccResourceKustomization_webhook(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"admissionregistration.k8s.io/ValidatingWebhookConfiguration/_/pod-policy.example.com\"]",
+				ResourceName:      "kustomization_resource.webhook",
 				ImportStateId:     "admissionregistration.k8s.io/ValidatingWebhookConfiguration/_/pod-policy.example.com",
 				ImportState:       true,
 				ImportStateVerify: true,

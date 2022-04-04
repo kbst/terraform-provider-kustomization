@@ -1,0 +1,14 @@
+apiVersion: test.example.com/v1alpha1
+kind: Namespacedcrd
+metadata:
+  name: namespacedco
+  namespace: test-upgrade-api-version
+spec:
+  test-key: test-value-initial
+---
+apiVersion: test.example.com/v1alpha1
+kind: Clusteredcrd
+metadata:
+  name: clusteredco
+spec:
+  test-key: test-value-initial

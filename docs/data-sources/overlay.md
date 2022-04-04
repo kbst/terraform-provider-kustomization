@@ -342,13 +342,13 @@ data "kustomization_overlay" "example" {
 
   patches {
     path = "path/to/patch.yaml"
-    target = {
+    target {
       label_selector = "app=example,env=${terraform.workspace}"
     }
   }
 
   patches {
-    target = {
+    target {
       kind = "Namespace"
       name = "test-ns"
     }
@@ -368,7 +368,7 @@ data "kustomization_overlay" "example" {
         path: /spec/rules/0/http/paths/0/path
         value: /newpath
     EOF
-    target = {
+    target {
       group = "networking.k8s.io"
       version = "v1beta1"
       kind = "Ingress"
@@ -515,12 +515,12 @@ data "kustomization_overlay" "example" {
 
   vars {
     name = "SECRET_NAME"
-    obj_ref = {
+    obj_ref {
       api_version = "v1"
       kind = "Secret"
       name = "example-secret1"
     }
-    field_ref = {
+    field_ref {
       field_path = "metadata.name"
     }
   }
@@ -531,7 +531,7 @@ data "kustomization_overlay" "example" {
         path: /spec/template/spec/containers/0/env
         value: [{"name": "SECRET_NAME", "value": "$(SECRET_NAME)"}]
     EOF
-    target = {
+    target {
       group = "apps"
       version = "v1"
       kind = "Deployment"

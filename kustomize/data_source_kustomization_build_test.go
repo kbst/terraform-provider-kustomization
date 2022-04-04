@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
 func TestAccDataSourceKustomization_basic(t *testing.T) {
@@ -103,7 +103,7 @@ provider "kustomization" {
 data "kustomization_build" "test" {
 	path = "%s"
 
-	kustomize_options = {
+	kustomize_options {
 		enable_helm = true
 		helm_path = "helm"
 	}

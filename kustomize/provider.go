@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"sync"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"

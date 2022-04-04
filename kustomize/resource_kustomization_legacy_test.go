@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
 //
@@ -56,7 +56,7 @@ func TestAccResourceKustomization_legacy_basic(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-basic\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "~G_v1_Namespace|~X|test-basic",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -98,11 +98,19 @@ func TestAccResourceKustomization_importLegacyInvalidID(t *testing.T) {
 		//PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
+			{
+				Config: testAccResourceKustomizationConfig_legacy_basicInitial("test_kustomizations/basic/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.dep1", "id"),
+				),
+			},
 			//
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-basic\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "invalidID",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -164,7 +172,7 @@ func TestAccResourceKustomization_legacy_updateInplace(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-update-inplace\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "~G_v1_Namespace|~X|test-update-inplace",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -237,7 +245,7 @@ func TestAccResourceKustomization_legacy_updateRecreate(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"~G_v1_Namespace|~X|test-update-recreate\"]",
+				ResourceName:      "kustomization_resource.ns",
 				ImportStateId:     "~G_v1_Namespace|~X|test-update-recreate",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -397,7 +405,7 @@ func TestAccResourceKustomization_legacy_webhook(t *testing.T) {
 			//
 			// Test state import
 			{
-				ResourceName:      "kustomization_resource.test[\"admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com\"]",
+				ResourceName:      "kustomization_resource.webhook",
 				ImportStateId:     "admissionregistration.k8s.io_v1_ValidatingWebhookConfiguration|~X|pod-policy.example.com",
 				ImportState:       true,
 				ImportStateVerify: true,

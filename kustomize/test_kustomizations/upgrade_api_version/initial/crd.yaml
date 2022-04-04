@@ -1,0 +1,75 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: namespacedcrds.test.example.com
+spec:
+  group: test.example.com
+  names:
+    kind: Namespacedcrd
+    plural: namespacedcrds
+    shortNames:
+    - ncrds
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              test-key:
+                type: string
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              test-key:
+                type: string
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusteredcrds.test.example.com
+spec:
+  group: test.example.com
+  names:
+    kind: Clusteredcrd
+    plural: clusteredcrds
+    shortNames:
+    - ccrds
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              test-key:
+                type: string
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              test-key:
+                type: string

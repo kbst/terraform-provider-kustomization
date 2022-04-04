@@ -9,6 +9,7 @@ builds:
     - -trimpath
   ldflags:
     - '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}}'
+    - '-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn'
   goos:
     - linux
   goarch:
