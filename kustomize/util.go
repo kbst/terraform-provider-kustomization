@@ -1,13 +1,19 @@
 package kustomize
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
+	"log"
 	"runtime"
 	"strings"
 
 	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	k8svalidation "k8s.io/apimachinery/pkg/api/validation"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -21,18 +27,68 @@ import (
 )
 
 const lastAppliedConfig = k8scorev1.LastAppliedConfigAnnotation
+const gzipLastAppliedConfig = "kustomization.kubestack.com/last-applied-config-gzip"
 
 func setLastAppliedConfig(u *k8sunstructured.Unstructured, srcJSON string) {
 	annotations := u.GetAnnotations()
 	if len(annotations) == 0 {
 		annotations = make(map[string]string)
 	}
+
 	annotations[lastAppliedConfig] = srcJSON
+	
+	needsGzip := false
+	sErr := k8svalidation.ValidateAnnotationsSize(annotations)
+	if sErr != nil {
+		needsGzip = true
+	}
+
+	if needsGzip {
+		var buf bytes.Buffer
+		zw := gzip.NewWriter(&buf)
+	
+		_, err1 := zw.Write([]byte(srcJSON))
+	
+		err2 := zw.Close()
+	
+		if err1 == nil && err2 == nil {
+			annotations[gzipLastAppliedConfig] = base64.StdEncoding.EncodeToString(buf.Bytes())
+			delete(annotations, lastAppliedConfig)
+		}
+	}
+
 	u.SetAnnotations(annotations)
 }
 
-func getLastAppliedConfig(u *k8sunstructured.Unstructured) string {
-	return strings.TrimRight(u.GetAnnotations()[lastAppliedConfig], "\r\n")
+func getLastAppliedConfig(u *k8sunstructured.Unstructured) (lac string) {
+	annotations := u.GetAnnotations()
+
+	lac = u.GetAnnotations()[lastAppliedConfig]
+
+	// read the compressed lac if available
+	if gzEnc, ok := annotations[gzipLastAppliedConfig]; ok {
+		gzDec, err := base64.StdEncoding.DecodeString(gzEnc)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var buf bytes.Buffer
+		buf.Write(gzDec)
+
+		zr, err1 := gzip.NewReader(&buf)
+
+		lacBuf := new(strings.Builder)
+		_, err2 := io.Copy(lacBuf, zr)
+
+		err3 := zr.Close()
+
+		// in case of any error, fall back to the uncompressed lac
+		if err1 == nil && err2 == nil && err3 == nil {
+			lac = lacBuf.String()
+		}
+	}
+
+	return strings.TrimRight(lac, "\r\n")
 }
 
 func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
