@@ -26,65 +26,69 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 )
 
-const lastAppliedConfig = k8scorev1.LastAppliedConfigAnnotation
-const gzipLastAppliedConfig = "kustomization.kubestack.com/last-applied-config-gzip"
+const lastAppliedConfigAnnotation = k8scorev1.LastAppliedConfigAnnotation
+const gzipLastAppliedConfigAnnotation = "kustomization.kubestack.com/last-applied-config-gzip"
 
-func setLastAppliedConfig(u *k8sunstructured.Unstructured, srcJSON string) {
+func setLastAppliedConfig(u *k8sunstructured.Unstructured, srcJSON string, gzipLastAppliedConfig bool) {
 	annotations := u.GetAnnotations()
 	if len(annotations) == 0 {
 		annotations = make(map[string]string)
 	}
 
-	annotations[lastAppliedConfig] = srcJSON
-	
-	needsGzip := false
-	sErr := k8svalidation.ValidateAnnotationsSize(annotations)
-	if sErr != nil {
-		needsGzip = true
-	}
+	annotations[lastAppliedConfigAnnotation] = srcJSON
 
-	if needsGzip {
-		var buf bytes.Buffer
-		zw := gzip.NewWriter(&buf)
+	if gzipLastAppliedConfig {
+		needsGzip := false
+		sErr := k8svalidation.ValidateAnnotationsSize(annotations)
+		if sErr != nil {
+			needsGzip = true
+		}
 	
-		_, err1 := zw.Write([]byte(srcJSON))
+		if needsGzip {
+			var buf bytes.Buffer
+			zw := gzip.NewWriter(&buf)
 	
-		err2 := zw.Close()
+			_, err1 := zw.Write([]byte(srcJSON))
 	
-		if err1 == nil && err2 == nil {
-			annotations[gzipLastAppliedConfig] = base64.StdEncoding.EncodeToString(buf.Bytes())
-			delete(annotations, lastAppliedConfig)
+			err2 := zw.Close()
+	
+			if err1 == nil && err2 == nil {
+				annotations[gzipLastAppliedConfigAnnotation] = base64.StdEncoding.EncodeToString(buf.Bytes())
+				delete(annotations, lastAppliedConfigAnnotation)
+			}
 		}
 	}
 
 	u.SetAnnotations(annotations)
 }
 
-func getLastAppliedConfig(u *k8sunstructured.Unstructured) (lac string) {
+func getLastAppliedConfig(u *k8sunstructured.Unstructured, gzipLastAppliedConfig bool) (lac string) {
 	annotations := u.GetAnnotations()
 
-	lac = u.GetAnnotations()[lastAppliedConfig]
+	lac = u.GetAnnotations()[lastAppliedConfigAnnotation]
 
-	// read the compressed lac if available
-	if gzEnc, ok := annotations[gzipLastAppliedConfig]; ok {
-		gzDec, err := base64.StdEncoding.DecodeString(gzEnc)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		var buf bytes.Buffer
-		buf.Write(gzDec)
-
-		zr, err1 := gzip.NewReader(&buf)
-
-		lacBuf := new(strings.Builder)
-		_, err2 := io.Copy(lacBuf, zr)
-
-		err3 := zr.Close()
-
-		// in case of any error, fall back to the uncompressed lac
-		if err1 == nil && err2 == nil && err3 == nil {
-			lac = lacBuf.String()
+	if gzipLastAppliedConfig {
+		// read the compressed lac if available
+		if gzEnc, ok := annotations[gzipLastAppliedConfigAnnotation]; ok {
+			gzDec, err := base64.StdEncoding.DecodeString(gzEnc)
+			if err != nil {
+				log.Fatal(err)
+			}
+	
+			var buf bytes.Buffer
+			buf.Write(gzDec)
+	
+			zr, err1 := gzip.NewReader(&buf)
+	
+			lacBuf := new(strings.Builder)
+			_, err2 := io.Copy(lacBuf, zr)
+	
+			err3 := zr.Close()
+	
+			// in case of any error, fall back to the uncompressed lac
+			if err1 == nil && err2 == nil && err3 == nil {
+				lac = lacBuf.String()
+			}
 		}
 	}
 
@@ -94,6 +98,7 @@ func getLastAppliedConfig(u *k8sunstructured.Unstructured) (lac string) {
 func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	n, err := parseJSON(modifiedJSON)
 	if err != nil {
@@ -104,8 +109,8 @@ func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, curren
 		return nil, nil, nil, err
 	}
 
-	setLastAppliedConfig(o, originalJSON)
-	setLastAppliedConfig(n, modifiedJSON)
+	setLastAppliedConfig(o, originalJSON, gzipLastAppliedConfig)
+	setLastAppliedConfig(n, modifiedJSON, gzipLastAppliedConfig)
 
 	mapping, err := mapper.RESTMapping(n.GroupVersionKind().GroupKind(), n.GroupVersionKind().Version)
 	if err != nil {

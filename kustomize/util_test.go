@@ -15,7 +15,7 @@ func TestLastAppliedConfig(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error: %s", err)
 	}
-	setLastAppliedConfig(u, srcJSON)
+	setLastAppliedConfig(u, srcJSON, true)
 
 	annotations := u.GetAnnotations()
 	count := len(annotations)
@@ -23,32 +23,33 @@ func TestLastAppliedConfig(t *testing.T) {
 		t.Errorf("TestLastAppliedConfig: incorrect number of annotations, got: %d, want: %d.", count, 1)
 	}
 
-	lac := getLastAppliedConfig(u)
+	lac := getLastAppliedConfig(u, true)
 	if lac != srcJSON {
 		t.Errorf("TestLastAppliedConfig: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
 	}
 }
 
-func TestLastAppliedConfigCompressed(t *testing.T) {
-	filler := func(n int) string {
-		const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		b := make([]byte, n)
-		for i := range b {
-			b[i] = letterBytes[rand.Intn(len(letterBytes))]
-		}
-    	return string(b)
-	}(256 * (1 << 10))
+func randomDataHelper(n int) string {
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
 
+func TestLastAppliedConfigCompressed(t *testing.T) {
+	filler := randomDataHelper(256 * (1 << 10))
 	srcJSON := fmt.Sprintf("{\"apiVersion\": \"v1\", \"kind\": \"ConfigMap\", \"metadata\": {\"name\": \"test-unit\", \"namespace\": \"test-unit\"}, \"data\": {\"payload\": %q}}", filler)
 	u, err := parseJSON(srcJSON)
 	if err != nil {
 		t.Errorf("Error: %s", err)
 	}
-	setLastAppliedConfig(u, srcJSON)
+	setLastAppliedConfig(u, srcJSON, true)
 
 	annotations := u.GetAnnotations()
 
-	_, ok := annotations[gzipLastAppliedConfig]
+	_, ok := annotations[gzipLastAppliedConfigAnnotation]
 	assert.Equal(t, true, ok, "TestLastAppliedConfigCompressed: did not have gzipLastAppliedConfig annotation")
 
 	count := len(annotations)
@@ -56,9 +57,37 @@ func TestLastAppliedConfigCompressed(t *testing.T) {
 		t.Errorf("TestLastAppliedConfigCompressed: incorrect number of annotations, got: %d, want: %d.", count, 1)
 	}
 
-	lac := getLastAppliedConfig(u)
+	lac := getLastAppliedConfig(u, true)
 	if lac != srcJSON {
 		t.Errorf("TestLastAppliedConfigCompressed: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
+	}
+}
+
+func TestLastAppliedConfigCompressionDisabled(t *testing.T) {
+	filler := randomDataHelper(256 * (1 << 10))
+	srcJSON := fmt.Sprintf("{\"apiVersion\": \"v1\", \"kind\": \"ConfigMap\", \"metadata\": {\"name\": \"test-unit\", \"namespace\": \"test-unit\"}, \"data\": {\"payload\": %q}}", filler)
+	u, err := parseJSON(srcJSON)
+	if err != nil {
+		t.Errorf("Error: %s", err)
+	}
+	setLastAppliedConfig(u, srcJSON, false)
+
+	annotations := u.GetAnnotations()
+
+	_, ok := annotations[lastAppliedConfigAnnotation]
+	assert.Equal(t, true, ok, "TestLastAppliedConfigCompressionDisabled: did not have lastAppliedConfig annotation")
+
+	_, ok = annotations[gzipLastAppliedConfigAnnotation]
+	assert.Equal(t, false, ok, "TestLastAppliedConfigCompressionDisabled: found gzipLastAppliedConfig annotation unexpectedly")
+
+	count := len(annotations)
+	if count != 1 {
+		t.Errorf("TestLastAppliedConfigCompressionDisabled: incorrect number of annotations, got: %d, want: %d.", count, 1)
+	}
+
+	lac := getLastAppliedConfig(u, false)
+	if lac != srcJSON {
+		t.Errorf("TestLastAppliedConfigCompressionDisabled: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
 	}
 }
 

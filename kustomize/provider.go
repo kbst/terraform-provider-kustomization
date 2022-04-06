@@ -25,6 +25,7 @@ type Config struct {
 	Mutex  *sync.Mutex
 	// whether legacy IDs are produced or not
 	LegacyIDs bool
+	GzipLastAppliedConfig bool
 }
 
 // Provider ...
@@ -76,6 +77,12 @@ func Provider() *schema.Provider {
 				Default:     false,
 				Deprecated:  "legacy_id_format will be removed in a future version",
 				Description: "If legacy_id_format is true, then resource IDs will look like group_version_kind|namespace|name. If legacy_id_format is false, then resource IDs will look like group/kind/namespace/name",
+			},
+			"gzip_last_applied_config": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "When 'true' compress the lastAppliedConfig annotation for resources that otherwise would exceed K8s' max annotation size. All other resources use the regular uncompressed annotation. Set to 'false' to disable compression entirely.",
 			},
 		},
 	}
@@ -144,8 +151,9 @@ func Provider() *schema.Provider {
 		mu := &sync.Mutex{}
 
 		legacyIDs := d.Get("legacy_id_format").(bool)
+		gzipLastAppliedConfig := d.Get("gzip_last_applied_config").(bool)
 
-		return &Config{client, mapper, mu, legacyIDs}, nil
+		return &Config{client, mapper, mu, legacyIDs, gzipLastAppliedConfig}, nil
 	}
 
 	return p
