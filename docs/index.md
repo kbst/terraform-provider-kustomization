@@ -47,6 +47,7 @@ provider "kustomization" {
 - `kubeconfig_incluster` - Set to `true` when running inside a kubernetes cluster.
 - `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is used.
 - `legacy_id_format` - (Optional) Defaults to `false`. Provided for backward compability, set to `true` to use the legacy ID format.
+- `gzip_last_applied_config` - (Optional) Defaults to `true`. Use a gzip compressed and base64 encoded value for the lastAppliedConfig annotation if a resource would otherwise exceed the Kubernetes max annotation size. All other resources use the regular uncompressed annotation. Set to `false` to disable compressed annotation.
 
 ## Migrating resource IDs from legacy format to format enabling API version upgrades
 

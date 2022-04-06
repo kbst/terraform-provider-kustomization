@@ -42,6 +42,7 @@ func kustomizationResource() *schema.Resource {
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -79,7 +80,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 
 	namespace := u.GetNamespace()
 
-	setLastAppliedConfig(u, srcJSON)
+	setLastAppliedConfig(u, srcJSON, gzipLastAppliedConfig)
 
 	if namespace != "" {
 		// wait for the namespace to exist
@@ -136,7 +137,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
+	d.Set("manifest", getLastAppliedConfig(resp, gzipLastAppliedConfig))
 
 	return kustomizationResourceRead(d, m)
 }
@@ -144,6 +145,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -173,7 +175,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp))
+	d.Set("manifest", getLastAppliedConfig(resp, gzipLastAppliedConfig))
 
 	return nil
 }
@@ -317,6 +319,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
 
@@ -382,7 +385,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	id := string(patchResp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(patchResp))
+	d.Set("manifest", getLastAppliedConfig(patchResp, gzipLastAppliedConfig))
 
 	return kustomizationResourceRead(d, m)
 }
@@ -464,6 +467,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	k, err := parseEitherIdFormat(d.Id())
 	if err != nil {
@@ -494,10 +498,10 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	lac := getLastAppliedConfig(resp)
+	lac := getLastAppliedConfig(resp, gzipLastAppliedConfig)
 	if lac == "" {
 		return nil, logError(
-			fmt.Errorf("group: %q, kind: %q, namespace: %q, name: %q: can not import resources without %q annotation", gk.Group, gk.Kind, k.Namespace, k.Name, lastAppliedConfig),
+			fmt.Errorf("group: %q, kind: %q, namespace: %q, name: %q: can not import resources without %q or %q annotation", gk.Group, gk.Kind, k.Namespace, k.Name, lastAppliedConfigAnnotation, gzipLastAppliedConfigAnnotation),
 		)
 	}
 
