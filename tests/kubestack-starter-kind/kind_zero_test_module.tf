@@ -3,7 +3,7 @@ module "kind_zero_test_module" {
     kustomization = kustomization.kind_zero
   }
 
-  source = "github.com/kbst/catalog//src/test?ref=f136940a812ce0e6e7efd41c9223f595472e7252"
+  source = "github.com/kbst/catalog//src/test?ref=7da56168a74f18abccd8ffb9aa1f16f02acc630f"
 
   configuration = {
     apps = {
