@@ -1,6 +1,7 @@
 package kustomize
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"testing"
@@ -91,6 +92,40 @@ data "kustomization_overlay" "test" {
 }
 `
 }
+
+//
+//
+// SchemaUpgradeV0
+func dataSourceKustomizationStateDataV0() map[string]interface{} {
+    return map[string]interface{}{
+        "target": map[string]interface{
+			"name": "test"
+		},
+    }
+}
+
+func dataSourceKustomizationStateDataV1() map[string]interface{} {
+	var targets []map[string]interface{}
+	target := map[string]interface{
+		"name": "test"
+	}
+	targets = append(targets, target)
+    return targets
+}
+
+func TestDataSourceKustomizationStateUpgradeV0(t *testing.T) {
+    expected := dataSourceKustomizationStateDataV1()
+    actual, err := dataSourceKustomizationOverlayStateUpgradeV0(context.TODO(), dataSourceKustomizationStateDataV0(), nil)
+    if err != nil {
+        t.Fatalf("error migrating state: %s", err)
+    }
+
+    if !reflect.DeepEqual(expected, actual) {
+        t.Fatalf("\n\nexpected:\n\n%#v\n\ngot:\n\n%#v\n\n", expected, actual)
+    }
+}
+
+
 
 //
 //
