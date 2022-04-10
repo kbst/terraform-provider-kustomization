@@ -87,6 +87,38 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		}
 	}
 
+	// for secrets of type service account token
+	// wait for service account to exist
+	// https://github.com/kubernetes/kubernetes/issues/109401
+	if (u.GetKind() == "Secret") &&
+	   (u.UnstructuredContent()["type"].(string) == string(k8scorev1.SecretTypeServiceAccountToken)) {
+
+		annotations := u.GetAnnotations()
+		for k, v := range annotations {
+			if k == k8scorev1.ServiceAccountNameKey {
+				saGvk := k8sschema.GroupVersionKind{
+					Group:   "",
+					Version: "v1",
+					Kind:    "ServiceAccount"}
+				mapping, err := mapper.RESTMapping(saGvk.GroupKind(), saGvk.GroupVersion().Version)
+				if err != nil {
+					return logErrorForResource(
+						u,
+						fmt.Errorf("api server has no apiVersion: %q, kind: %q: %s", saGvk.GroupVersion(), saGvk.Kind, err),
+					)
+				}
+
+				_, err = waitForGVKCreated(d, client, mapping, namespace, v)
+				if err != nil {
+					return logErrorForResource(
+						u,
+						fmt.Errorf("timed out waiting for apiVersion: %q, kind: %q, namepsace: %q, name: %q, to exist: %s", saGvk.GroupVersion(), saGvk.Kind, namespace, v, err),
+					)
+				}
+			}
+		}
+	}
+
 	resp, err := client.
 		Resource(gvr).
 		Namespace(namespace).
