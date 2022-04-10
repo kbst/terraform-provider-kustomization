@@ -592,6 +592,55 @@ resource "kustomization_resource" "webhook" {
 
 //
 //
+// SA Token Secret
+func TestAccResourceKustomization_secretSAToken(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			// we need to give the K8s GC time to delete the secret
+			// while the service account doesn't exist yet
+			// https://github.com/kubernetes/kubernetes/issues/109401
+			"time": {},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccResourceKustomizationConfig_secretSAToken("test_kustomizations/secret_service_account_token"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.sec", "id"),
+					testAccCheckManifestAnnotation("kustomization_resource.sec", "kubernetes.io/service-account.name", "test-sa"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.sa", "id"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_secretSAToken(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-secret-sa-token"]
+}
+
+resource "kustomization_resource" "sec" {
+	manifest = data.kustomization_build.test.manifests["_/Secret/test-secret-sa-token/test-sa-token"]
+}
+
+resource "time_sleep" "garbage_collection" {
+	create_duration = "5s"
+}
+
+resource "kustomization_resource" "sa" {
+	manifest = data.kustomization_build.test.manifests["_/ServiceAccount/test-secret-sa-token/test-sa"]
+
+	depends_on = [time_sleep.garbage_collection]
+}
+`
+}
+
+//
+//
 // TransformerConfigs test
 func TestAccResourceKustomization_transformerConfigs(t *testing.T) {
 
