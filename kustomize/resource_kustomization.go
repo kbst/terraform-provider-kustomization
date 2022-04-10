@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
+	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,25 +50,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
-	stateConf := &resource.StateChangeConf{
-		Target:  []string{"existing"},
-		Pending: []string{"pending"},
-		Timeout: d.Timeout(schema.TimeoutCreate),
-		Refresh: func() (interface{}, string, error) {
-			// CRDs: wait for GroupVersionKind to exist
-			mapper.Reset()
-			mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
-			if err != nil {
-				if k8smeta.IsNoMatchError(err) {
-					return nil, "pending", nil
-				}
-				return nil, "", err
-			}
-
-			return mapping.Resource, "existing", nil
-		},
-	}
-	gvrResp, err := stateConf.WaitForState()
+	gvrResp, err := waitForCRD(d, mapper, u)
 	if err != nil {
 		return logErrorForResource(
 			u,
@@ -86,7 +68,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		// wait for the namespace to exist
 		nsGvk := k8sschema.GroupVersionKind{
 			Group:   "",
-			Version: "",
+			Version: "v1",
 			Kind:    "Namespace"}
 		mapping, err := mapper.RESTMapping(nsGvk.GroupKind(), nsGvk.GroupVersion().Version)
 		if err != nil {
@@ -96,25 +78,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 			)
 		}
 
-		stateConf := &resource.StateChangeConf{
-			Target:  []string{"existing"},
-			Pending: []string{"pending"},
-			Timeout: d.Timeout(schema.TimeoutCreate),
-			Refresh: func() (interface{}, string, error) {
-				resp, err := client.
-					Resource(mapping.Resource).
-					Get(context.TODO(), namespace, k8smetav1.GetOptions{})
-				if err != nil {
-					if k8serrors.IsNotFound(err) {
-						return nil, "pending", nil
-					}
-					return nil, "", err
-				}
-
-				return resp, "existing", nil
-			},
-		}
-		_, err = stateConf.WaitForState()
+		_, err = waitForGVKCreated(d, client, mapping, "", namespace)
 		if err != nil {
 			return logErrorForResource(
 				u,
@@ -432,26 +396,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 		)
 	}
 
-	stateConf := &resource.StateChangeConf{
-		Target:  []string{},
-		Pending: []string{"deleting"},
-		Timeout: d.Timeout(schema.TimeoutDelete),
-		Refresh: func() (interface{}, string, error) {
-			resp, err := client.
-				Resource(mappings[0].Resource).
-				Namespace(namespace).
-				Get(context.TODO(), name, k8smetav1.GetOptions{})
-			if err != nil {
-				if k8serrors.IsNotFound(err) {
-					return nil, "", nil
-				}
-				return nil, "", err
-			}
-
-			return resp, "deleting", nil
-		},
-	}
-	_, err = stateConf.WaitForState()
+	_, err = waitForGVKDeleted(d, client, mappings[0], namespace, name)
 	if err != nil {
 		return logErrorForResource(
 			u,
