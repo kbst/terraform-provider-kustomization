@@ -4,7 +4,7 @@ on: push
 
 env:
   GO_VERSION: ">=1.17"
-  TERRAFORM_VERSION: "1.1.7"
+  TERRAFORM_VERSION: "1.1.9"
 
 jobs:
   tf_tests:
