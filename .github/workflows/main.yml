@@ -4,7 +4,7 @@ on: push
 
 env:
   GO_VERSION: ">=1.17"
-  TERRAFORM_VERSION: "1.1.7"
+  TERRAFORM_VERSION: "1.1.9"
 
 jobs:
   tf_tests:
@@ -80,7 +80,7 @@ jobs:
     - name: 'Prepare terraform-plugins'
       run: |
         mkdir -p ./dist/terraform.d/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64
-        cp ./dist/terraform-provider-kustomization_linux_amd64/terraform-provider-kustomization_v* ./dist/terraform.d/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64/terraform-provider-kustomization_v1.0.0
+        cp ./dist/terraform-provider-kustomization_linux_amd64_v1/terraform-provider-kustomization_v* ./dist/terraform.d/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64/terraform-provider-kustomization_v1.0.0
 
     - name: 'Upload terraform-plugins'
       uses: actions/upload-artifact@v2
