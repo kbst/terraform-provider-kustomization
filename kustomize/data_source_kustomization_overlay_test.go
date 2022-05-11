@@ -28,6 +28,7 @@ func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 					// Kustomization attributes
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "common_annotations.%", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "common_labels.%", "0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "labels.%", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "components.#", "0"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "config_map_generator.#", "1"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "crds.#", "0"),
@@ -58,6 +59,10 @@ data "kustomization_overlay" "test" {
 	common_annotations = {}
 
 	common_labels = {}
+
+	labels {
+		pairs = {}
+	}
 
 	components = []
 
@@ -162,6 +167,51 @@ data "kustomization_overlay" "test" {
 
 output "check" {
 	value = data.kustomization_overlay.test.manifests["_/Namespace/_/test-basic"]
+}
+`
+}
+
+//
+//
+// Test labels attr
+func TestDataSourceKustomizationOverlay_labels(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_labels(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\",\"test-label\":\"true\",\"test-label-selector\":\"true\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\",\"test-label-selector\":\"true\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\",\"test-label-selector\":\"true\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_labels() string {
+	return `
+data "kustomization_overlay" "test" {
+	labels {
+		pairs = {
+			test-label = true
+		}
+	}
+	labels {
+		pairs = {
+			test-label-selector = true
+		}
+		include_selectors = true
+	}
+
+	resources = [
+		"test_kustomizations/basic/initial",
+	]
+}
+
+output "check" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/test-basic/test"]
 }
 `
 }

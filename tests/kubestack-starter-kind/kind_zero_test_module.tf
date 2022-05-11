@@ -26,6 +26,12 @@ module "kind_zero_test_module" {
         "test-label" = "test"
       }
 
+      labels = [{
+        pairs = {
+          "test-label-only" = "test"
+        }
+      }]
+
       generator_options = {
         annotations = {
           annotation-generated = "test"
