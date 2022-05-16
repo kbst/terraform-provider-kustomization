@@ -103,6 +103,23 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
+			"labels": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"pairs": {
+							Type:     schema.TypeMap,
+							Required: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"include_selectors": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"components": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -553,6 +570,24 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 		k.CommonLabels = convertMapStringInterfaceToMapStringString(
 			d.Get("common_labels").(map[string]interface{}),
 		)
+	}
+
+	if d.Get("labels") != nil {
+		lbls := d.Get("labels").([]interface{})
+		for i := range lbls {
+			if lbls[i] == nil {
+				continue
+			}
+			lbl := lbls[i].(map[string]interface{})
+			lb := types.Label{}
+
+			lb.Pairs = convertMapStringInterfaceToMapStringString(
+				lbl["pairs"].(map[string]interface{}),
+			)
+			lb.IncludeSelectors = lbl["include_selectors"].(bool)
+
+			k.Labels = append(k.Labels, lb)
+		}
 	}
 
 	if d.Get("components") != nil {

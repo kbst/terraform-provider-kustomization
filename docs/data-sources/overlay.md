@@ -94,6 +94,29 @@ data "kustomization_overlay" "example" {
 }
 ```
 
+### `labels` - (optional)
+
+Set [Kustomize labels](https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/labels/) using `labels` key/value pairs. Sets `labels` without also automatically injecting corresponding selectors.
+
+#### Example
+
+```hcl
+# example shows how keys and values can be references
+locals {
+  label_key   = "example-label"
+  label_value = true
+}
+
+data "kustomization_overlay" "example" {
+  labels {
+    pairs = {
+      (local.label_key) = local.label_value
+    }
+    include_selectors = true # <-- false by default
+  }
+}
+```
+
 ### `components` - (optional)
 
 Add one or more paths to [Kustomize components](https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/components/) to inherit from.
