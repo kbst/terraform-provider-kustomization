@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: test-update-recreate-roleref
+
+resources:
+- ../initial
+
+patches:
+- patch: |
+    - op: replace
+      path: /metadata/name
+      value: test-modified
+  target:
+    group: "rbac.authorization.k8s.io"
+    version: v1
+    kind: Role
+    name: test-initial
+- patch: |
+    - op: replace
+      path: /roleRef/name
+      value: test-modified
+  target:
+    group: "rbac.authorization.k8s.io"
+    version: v1
+    kind: RoleBinding
+    name: test
