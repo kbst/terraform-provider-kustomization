@@ -381,6 +381,72 @@ resource "kustomization_resource" "ss" {
 
 //
 //
+// Update_Recreate_RoleRef Test
+func TestAccResourceKustomization_updateRecreateRoleRef(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial role and rolebinding
+			{
+				Config: testAccResourceKustomizationConfig_updateRecreateRoleRefInitial("test_kustomizations/update_recreate_roleref/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.r", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.rb", "id"),
+				),
+			},
+			//
+			//
+			// Applying changed roleRef
+			{
+				Config: testAccResourceKustomizationConfig_updateRecreateRoleRefModified("test_kustomizations/update_recreate_roleref/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.r", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.rb", "id"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_updateRecreateRoleRefInitial(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-recreate-roleref"]
+}
+
+resource "kustomization_resource" "r" {
+	manifest = data.kustomization_build.test.manifests["rbac.authorization.k8s.io/Role/test-update-recreate-roleref/test-initial"]
+}
+
+resource "kustomization_resource" "rb" {
+	manifest = data.kustomization_build.test.manifests["rbac.authorization.k8s.io/RoleBinding/test-update-recreate-roleref/test"]
+}
+`
+}
+
+func testAccResourceKustomizationConfig_updateRecreateRoleRefModified(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-recreate-roleref"]
+}
+
+resource "kustomization_resource" "r" {
+	manifest = data.kustomization_build.test.manifests["rbac.authorization.k8s.io/Role/test-update-recreate-roleref/test-modified"]
+}
+
+resource "kustomization_resource" "rb" {
+	manifest = data.kustomization_build.test.manifests["rbac.authorization.k8s.io/RoleBinding/test-update-recreate-roleref/test"]
+}
+`
+}
+
+//
+//
 // Upgrade_API_Version Test
 func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
 

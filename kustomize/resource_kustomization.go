@@ -91,7 +91,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	// wait for service account to exist
 	// https://github.com/kubernetes/kubernetes/issues/109401
 	if (u.GetKind() == "Secret") &&
-	   (u.UnstructuredContent()["type"].(string) == string(k8scorev1.SecretTypeServiceAccountToken)) {
+		(u.UnstructuredContent()["type"].(string) == string(k8scorev1.SecretTypeServiceAccountToken)) {
 
 		annotations := u.GetAnnotations()
 		for k, v := range annotations {
@@ -259,6 +259,12 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 
 				// if cause is statefulset forbidden fields error force a delete and re-create plan
 				if k8serrors.HasStatusCause(err, k8smetav1.CauseType(field.ErrorTypeForbidden)) && strings.HasPrefix(msg, "Forbidden: updates to statefulset spec for fields") == true {
+					d.ForceNew("manifest")
+					return nil
+				}
+
+				// if cause is cannot change roleRef force a delete and re-create plan
+				if k8serrors.HasStatusCause(err, k8smetav1.CauseTypeFieldValueInvalid) && strings.HasSuffix(msg, ": cannot change roleRef") == true {
 					d.ForceNew("manifest")
 					return nil
 				}
