@@ -1,6 +1,6 @@
 # `kustomization_resource` Resource
 
-Resource to provision JSON encoded Kubernetes manifests as produced by the `kustomization_build` or `kustomization_overlay` data sources on a Kubernetes cluster. Uses client-go dynamic client and uses server side dry runs to determine the Terraform plan for changing a resource.
+Resource to provision JSON encoded Kubernetes manifests as produced by the `kustomization_build` or `kustomization_overlay` data sources on a Kubernetes cluster. Uses client-go dynamic client and server side dry runs to determine the Terraform plan for changing a resource.
 
 ### Terraform Limitation
 
@@ -10,26 +10,45 @@ One possible workaround is to increase the number of parallel resource operation
 
 A better approach is to instruct Terraform to handle the resources in the correct order, using an explicit `depends_on`. For this reason, both data sources additionally return `ids_prio`, three sets of IDs grouped by the order they should be applied in.
 
-Below two examples show both the simplified usage with `for_each` and `ids`. As well as the example with an explicit `depends_on` and `for_each` based on what priority bracket the ID is in.
+In addition to the inability of a provider to control the Terraform dependency graph, marking an attribute sensitive, to hide it from the Terraform plan output, is not possible conditionally in the provider. As a result, the `manifest` attribute can't be marked sensitive for Kubernetes secrets, but kept non-sensitive for all other resources to keep the ability to preview changes. As a result, marking the `manifest` attribute sensitive for Kubernetes secrets, and potentially other resources, has to be handled conditionally in Terraform code.
+
+The explicit `depends_on` for correct ordering of resources, and the conditional `sensitive` to prevent leaking secret values to the Terraform plan output make using the provider rather verbose. To make this easier to use, a convenience module is available, which handles all this inside the module and allows setting the Kustomizations as module variables, that are then passed to the `kustomization_overlay` data source. 
+
+Below are two examples, one using the convenience module, and another one showing the explicit `depends_on` and `for_each`, as well as the conditional `sensitive`.
 
 ## Example Usage
 
-### Simple Example
+### Module Example
 
 ```hcl
-data "kustomization_build" "test" {
-  path = "test_kustomizations/basic/initial"
+module "example_custom_manifests" {
+  source  = "kbst.xyz/catalog/custom-manifests/kustomization"
+  version = "0.3.0"
+
+  configuration_base_key = "default"  # must match workspace name
+  configuration = {
+    default = {
+      namespace = "example-${terraform.workspace}"
+
+      resources = [
+        "${path.root}/manifests/example/namespace.yaml",
+        "${path.root}/manifests/example/deployment.yaml",
+        "${path.root}/manifests/example/service.yaml"
+      ]
+
+      common_labels = {
+        "env" = terraform.workspace
+      }
+    }
+  }
 }
-
-resource "kustomization_resource" "test" {
-  for_each = data.kustomization_build.test.ids
-
-  manifest = data.kustomization_build.test.manifests[each.value]
-}
-
 ```
 
-### Explicit `depends_on` Example
+Complete documentation of the custom-manifests convenience module can be found in the [Kubestack framework documentation](https://www.kubestack.com/framework/documentation/cluster-service-modules#custom-manifests).
+
+### Provider Example
+
+Usage of the provider requires one of the data sources, which return IDs and manifests as JSON strings, and the `kustomization_resource` to loop over the IDs using `for_each`, explicit `depends_on` as well as conditional `sensitive` on the `manifest` attribute.
 
 ```hcl
 data "kustomization_build" "test" {
@@ -40,7 +59,11 @@ data "kustomization_build" "test" {
 resource "kustomization_resource" "p0" {
   for_each = data.kustomization_build.test.ids_prio[0]
 
-  manifest = data.kustomization_build.test.manifests[each.value]
+  manifest = (
+    contains(["_/Secret"], regex("(?P<group_kind>.*/.*)/.*/.*", each.value)["group_kind"])
+    ? sensitive(data.kustomization_build.test.manifests[each.value])
+    : data.kustomization_build.test.manifests[each.value]
+  )
 }
 
 # then loop through resources in ids_prio[1]
@@ -48,7 +71,11 @@ resource "kustomization_resource" "p0" {
 resource "kustomization_resource" "p1" {
   for_each = data.kustomization_build.test.ids_prio[1]
 
-  manifest = data.kustomization_build.test.manifests[each.value]
+  manifest = (
+    contains(["_/Secret"], regex("(?P<group_kind>.*/.*)/.*/.*", each.value)["group_kind"])
+    ? sensitive(data.kustomization_build.test.manifests[each.value])
+    : data.kustomization_build.test.manifests[each.value]
+  )
 
   depends_on = [kustomization_resource.p0]
 }
@@ -58,7 +85,11 @@ resource "kustomization_resource" "p1" {
 resource "kustomization_resource" "p2" {
   for_each = data.kustomization_build.test.ids_prio[2]
 
-  manifest = data.kustomization_build.test.manifests[each.value]
+  manifest = (
+    contains(["_/Secret"], regex("(?P<group_kind>.*/.*)/.*/.*", each.value)["group_kind"])
+    ? sensitive(data.kustomization_build.test.manifests[each.value])
+    : data.kustomization_build.test.manifests[each.value]
+  )
 
   depends_on = [kustomization_resource.p1]
 }
