@@ -91,6 +91,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	// wait for service account to exist
 	// https://github.com/kubernetes/kubernetes/issues/109401
 	if (u.GetKind() == "Secret") &&
+		(u.UnstructuredContent()["type"] != nil) &&
 		(u.UnstructuredContent()["type"].(string) == string(k8scorev1.SecretTypeServiceAccountToken)) {
 
 		annotations := u.GetAnnotations()

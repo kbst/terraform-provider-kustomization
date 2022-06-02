@@ -674,8 +674,9 @@ func TestAccResourceKustomization_secretSAToken(t *testing.T) {
 				Config: testAccResourceKustomizationConfig_secretSAToken("test_kustomizations/secret_service_account_token"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
-					resource.TestCheckResourceAttrSet("kustomization_resource.sec", "id"),
-					testAccCheckManifestAnnotation("kustomization_resource.sec", "kubernetes.io/service-account.name", "test-sa"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.sec_sa_token", "id"),
+					testAccCheckManifestAnnotation("kustomization_resource.sec_sa_token", "kubernetes.io/service-account.name", "test-sa"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.sec_default", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.sa", "id"),
 				),
 			},
@@ -689,8 +690,12 @@ resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-secret-sa-token"]
 }
 
-resource "kustomization_resource" "sec" {
+resource "kustomization_resource" "sec_sa_token" {
 	manifest = data.kustomization_build.test.manifests["_/Secret/test-secret-sa-token/test-sa-token"]
+}
+
+resource "kustomization_resource" "sec_default" {
+	manifest = data.kustomization_build.test.manifests["_/Secret/test-secret-sa-token/test"]
 }
 
 resource "time_sleep" "garbage_collection" {
