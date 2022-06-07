@@ -30,7 +30,7 @@ func getIDFromResources(rm resmap.ResMap) (s string, err error) {
 	return s, nil
 }
 
-func determinePrefix(kr *K8sResId) (p uint32) {
+func determinePrefix(kr *kManifestId) (p uint32) {
 	// Default prefix to 5
 	p = 5
 
@@ -38,7 +38,7 @@ func determinePrefix(kr *K8sResId) (p uint32) {
 		"Namespace",
 		"CustomResourceDefinition",
 	} {
-		if strings.HasPrefix(kr.Kind, k) {
+		if strings.HasPrefix(kr.kind, k) {
 			p = 1
 		}
 	}
@@ -47,7 +47,7 @@ func determinePrefix(kr *K8sResId) (p uint32) {
 		"MutatingWebhookConfiguration",
 		"ValidatingWebhookConfiguration",
 	} {
-		if strings.HasPrefix(kr.Kind, k) {
+		if strings.HasPrefix(kr.kind, k) {
 			p = 9
 		}
 	}

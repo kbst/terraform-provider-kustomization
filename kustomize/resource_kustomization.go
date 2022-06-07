@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
@@ -12,7 +13,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -40,61 +40,35 @@ func kustomizationResource() *schema.Resource {
 }
 
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
-	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+	client := m.(*Config).Client
+	km := newKManifest(mapper, client)
 
-	srcJSON := d.Get("manifest").(string)
-	u, err := parseJSON(srcJSON)
+	err := km.load([]byte(d.Get("manifest").(string)))
 	if err != nil {
-		return logError(fmt.Errorf("JSON parse error: %s", err))
+		return err
 	}
 
-	gvrResp, err := waitForCRD(d, mapper, u)
+	// required for CRDs
+	err = km.waitKind(time.Duration(3 * time.Minute))
 	if err != nil {
-		return logErrorForResource(
-			u,
-			fmt.Errorf("timed out waiting for apiVersion: %q, kind: %q to exist: %s", u.GroupVersionKind().GroupVersion(), u.GroupVersionKind().Kind, err),
-		)
+		return err
 	}
 
-	gvr := gvrResp.(k8sschema.GroupVersionResource)
-
-	namespace := u.GetNamespace()
-
-	setLastAppliedConfig(u, srcJSON, gzipLastAppliedConfig)
-
-	if namespace != "" {
-		// wait for the namespace to exist
-		nsGvk := k8sschema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "Namespace"}
-		mapping, err := mapper.RESTMapping(nsGvk.GroupKind(), nsGvk.GroupVersion().Version)
-		if err != nil {
-			return logErrorForResource(
-				u,
-				fmt.Errorf("api server has no apiVersion: %q, kind: %q: %s", nsGvk.GroupVersion(), nsGvk.Kind, err),
-			)
-		}
-
-		_, err = waitForGVKCreated(d, client, mapping, "", namespace)
-		if err != nil {
-			return logErrorForResource(
-				u,
-				fmt.Errorf("timed out waiting for apiVersion: %q, kind: %q, name: %q, to exist: %s", nsGvk.GroupVersion(), nsGvk.Kind, namespace, err),
-			)
-		}
+	// required for namespaced resources
+	err = km.waitNamespace(time.Duration(5 * time.Minute))
+	if err != nil {
+		return err
 	}
 
 	// for secrets of type service account token
 	// wait for service account to exist
 	// https://github.com/kubernetes/kubernetes/issues/109401
-	if (u.GetKind() == "Secret") &&
-		(u.UnstructuredContent()["type"] != nil) &&
-		(u.UnstructuredContent()["type"].(string) == string(k8scorev1.SecretTypeServiceAccountToken)) {
+	if (km.gvk().Kind == "Secret") &&
+		(km.resource.UnstructuredContent()["type"] != nil) &&
+		(km.resource.UnstructuredContent()["type"].(string) == string(k8scorev1.SecretTypeServiceAccountToken)) {
 
-		annotations := u.GetAnnotations()
+		annotations := km.resource.GetAnnotations()
 		for k, v := range annotations {
 			if k == k8scorev1.ServiceAccountNameKey {
 				saGvk := k8sschema.GroupVersionKind{
@@ -103,32 +77,25 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 					Kind:    "ServiceAccount"}
 				mapping, err := mapper.RESTMapping(saGvk.GroupKind(), saGvk.GroupVersion().Version)
 				if err != nil {
-					return logErrorForResource(
-						u,
-						fmt.Errorf("api server has no apiVersion: %q, kind: %q: %s", saGvk.GroupVersion(), saGvk.Kind, err),
+					return km.fmtErr(
+						fmt.Errorf("api error: %q: %s", saGvk.String(), err),
 					)
 				}
 
-				_, err = waitForGVKCreated(d, client, mapping, namespace, v)
+				_, err = waitForGVKCreated(d, client, mapping, km.namespace(), v)
 				if err != nil {
-					return logErrorForResource(
-						u,
-						fmt.Errorf("timed out waiting for apiVersion: %q, kind: %q, namepsace: %q, name: %q, to exist: %s", saGvk.GroupVersion(), saGvk.Kind, namespace, v, err),
-					)
+					return km.fmtErr(fmt.Errorf("timed out waiting for: %q: %s", km.id().toString(), err))
 				}
 			}
 		}
 	}
 
-	resp, err := client.
-		Resource(gvr).
-		Namespace(namespace).
-		Create(context.TODO(), u, k8smetav1.CreateOptions{})
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+	setLastAppliedConfig(km, gzipLastAppliedConfig)
+
+	resp, err := km.apiCreate(k8smetav1.CreateOptions{})
 	if err != nil {
-		return logErrorForResource(
-			u,
-			fmt.Errorf("create failed: %s", err),
-		)
+		return err
 	}
 
 	id := string(resp.GetUID())
@@ -140,109 +107,99 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 }
 
 func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(*Config).Client
-	mapper := m.(*Config).Mapper
-	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+	km := newKManifest(m.(*Config).Mapper, m.(*Config).Client)
 
-	srcJSON := d.Get("manifest").(string)
-	u, err := parseJSON(srcJSON)
+	err := km.load([]byte(d.Get("manifest").(string)))
 	if err != nil {
-		return logError(fmt.Errorf("JSON parse error: %s", err))
+		return err
 	}
 
-	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
+	resp, err := km.apiGet(k8smetav1.GetOptions{})
 	if err != nil {
-		return logErrorForResource(
-			u,
-			fmt.Errorf("failed to query GVR: %s", err),
-		)
-	}
-
-	resp, err := client.
-		Resource(mapping.Resource).
-		Namespace(u.GetNamespace()).
-		Get(context.TODO(), u.GetName(), k8smetav1.GetOptions{})
-	if err != nil {
-		return logErrorForResource(
-			u,
-			fmt.Errorf("get failed: %s", err),
-		)
+		return err
 	}
 
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp, gzipLastAppliedConfig))
+	d.Set("manifest", getLastAppliedConfig(resp, m.(*Config).GzipLastAppliedConfig))
 
 	return nil
 }
 
+func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, error) {
+	km := newKManifest(m.(*Config).Mapper, m.(*Config).Client)
+
+	err := km.load([]byte(d.Get("manifest").(string)))
+	if err != nil {
+		return false, err
+	}
+
+	err = km.waitKind(time.Duration(5 * time.Second))
+	if err != nil {
+		if k8smeta.IsNoMatchError(err) {
+			// If the Kind does not exist in the K8s API,
+			// the resource can't exist either
+			return false, nil
+		}
+		return false, err
+	}
+
+	_, err = km.apiGet(k8smetav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
 func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m interface{}) error {
-	client := m.(*Config).Client
-	mapper := m.(*Config).Mapper
-
-	originalJSON, modifiedJSON := d.GetChange("manifest")
-
 	if !d.HasChange("manifest") {
 		return nil
 	}
 
-	originalSrcJSON := originalJSON.(string)
-	if originalSrcJSON == "" {
+	client := m.(*Config).Client
+	mapper := m.(*Config).Mapper
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+
+	do, dm := d.GetChange("manifest")
+
+	if do.(string) == "" {
 		return nil
 	}
 
-	ou, err := parseJSON(originalSrcJSON)
+	kmo := newKManifest(mapper, client)
+	err := kmo.load([]byte(do.(string)))
 	if err != nil {
-		return logError(fmt.Errorf("JSON parse error: %s", err))
+		return err
 	}
 
-	modifiedSrcJSON := modifiedJSON.(string)
-	mu, err := parseJSON(modifiedSrcJSON)
+	kmm := newKManifest(mapper, client)
+	err = kmm.load([]byte(dm.(string)))
 	if err != nil {
-		return logError(fmt.Errorf("JSON parse error: %s", err))
+		return err
 	}
 
-	if ou.GetName() != mu.GetName() || ou.GetNamespace() != mu.GetNamespace() {
+	if kmo.name() != kmm.name() || kmo.namespace() != kmm.namespace() {
 		// if the resource name or namespace changes, we can't patch but have to destroy and re-create
 		d.ForceNew("manifest")
 		return nil
 	}
 
-	mapping, err := mapper.RESTMapping(mu.GroupVersionKind().GroupKind(), mu.GroupVersionKind().Version)
-	if err != nil {
-		return logErrorForResource(
-			mu,
-			fmt.Errorf("failed to query GVR: %s", err),
-		)
-	}
+	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
+	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
 
-	original, modified, current, err := getOriginalModifiedCurrent(
-		originalJSON.(string),
-		modifiedJSON.(string),
-		true,
-		m)
+	pt, p, err := kmm.apiPreparePatch(kmo, true)
 	if err != nil {
-		return logErrorForResource(
-			mu,
-			fmt.Errorf("getOriginalModifiedCurrent failed: %s", err),
-		)
-	}
-
-	patch, patchType, err := getPatch(mu.GroupVersionKind(), original, modified, current)
-	if err != nil {
-		return logErrorForResource(
-			mu,
-			fmt.Errorf("getPatch failed: %s", err),
-		)
+		return err
 	}
 
 	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
 
-	_, err = client.
-		Resource(mapping.Resource).
-		Namespace(mu.GetNamespace()).
-		Patch(context.TODO(), mu.GetName(), patchType, patch, dryRunPatch)
+	_, err = kmm.apiPatch(pt, p, dryRunPatch)
 	if err != nil {
 		// Handle specific invalid errors
 		if k8serrors.IsInvalid(err) {
@@ -273,50 +230,10 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 			}
 		}
 
-		return logErrorForResource(
-			mu,
-			fmt.Errorf("patch failed '%s': %s", patchType, err),
-		)
+		return err
 	}
 
 	return nil
-}
-
-func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, error) {
-	client := m.(*Config).Client
-	mapper := m.(*Config).Mapper
-
-	srcJSON := d.Get("manifest").(string)
-	u, err := parseJSON(srcJSON)
-	if err != nil {
-		return false, logError(fmt.Errorf("JSON parse error: %s", err))
-	}
-
-	mappings, err := mapper.RESTMappings(u.GroupVersionKind().GroupKind())
-	if err != nil {
-		if k8smeta.IsNoMatchError(err) {
-			// If the Kind does not exist in the K8s API,
-			// the resource can't exist either
-			return false, logError(fmt.Errorf("Can't find kind %s in API group %s", u.GroupVersionKind().Kind, u.GroupVersionKind().Group))
-		}
-		return false, err
-	}
-
-	_, err = client.
-		Resource(mappings[0].Resource).
-		Namespace(u.GetNamespace()).
-		Get(context.TODO(), u.GetName(), k8smetav1.GetOptions{})
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return false, nil
-		}
-		return false, logErrorForResource(
-			u,
-			fmt.Errorf("get failed: %s", err),
-		)
-	}
-
-	return true, nil
 }
 
 func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
@@ -324,71 +241,43 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	mapper := m.(*Config).Mapper
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
-	originalJSON, modifiedJSON := d.GetChange("manifest")
+	do, dm := d.GetChange("manifest")
 
-	srcJSON := originalJSON.(string)
-	ou, err := parseJSON(srcJSON)
+	kmo := newKManifest(mapper, client)
+	err := kmo.load([]byte(do.(string)))
 	if err != nil {
-		return logError(fmt.Errorf("JSON parse error: %s", err))
+		return err
+	}
+
+	kmm := newKManifest(mapper, client)
+	err = kmm.load([]byte(dm.(string)))
+	if err != nil {
+		return err
 	}
 
 	if !d.HasChange("manifest") {
-		return logErrorForResource(
-			ou,
+		return kmm.fmtErr(
 			errors.New("update called without diff"),
 		)
 	}
 
-	modifiedSrcJSON := modifiedJSON.(string)
-	mu, err := parseJSON(modifiedSrcJSON)
+	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
+	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
+
+	pt, p, err := kmm.apiPreparePatch(kmo, false)
 	if err != nil {
-		return logError(fmt.Errorf("JSON parse error: %s", err))
+		return err
 	}
 
-	mapping, err := mapper.RESTMapping(mu.GroupVersionKind().GroupKind(), mu.GroupVersionKind().Version)
+	resp, err := kmm.apiPatch(pt, p, k8smetav1.PatchOptions{})
 	if err != nil {
-		return logErrorForResource(
-			mu,
-			fmt.Errorf("failed to query GVR: %s", err),
-		)
+		return err
 	}
 
-	original, modified, current, err := getOriginalModifiedCurrent(
-		originalJSON.(string),
-		modifiedJSON.(string),
-		false,
-		m)
-	if err != nil {
-		return logErrorForResource(
-			mu,
-			fmt.Errorf("getOriginalModifiedCurrent failed: %s", err),
-		)
-	}
-
-	patch, patchType, err := getPatch(mu.GroupVersionKind(), original, modified, current)
-	if err != nil {
-		return logErrorForResource(
-			mu,
-			fmt.Errorf("getPatch failed: %s", err),
-		)
-	}
-
-	var patchResp *unstructured.Unstructured
-	patchResp, err = client.
-		Resource(mapping.Resource).
-		Namespace(mu.GetNamespace()).
-		Patch(context.TODO(), mu.GetName(), patchType, patch, k8smetav1.PatchOptions{})
-	if err != nil {
-		return logErrorForResource(
-			mu,
-			fmt.Errorf("patch failed '%s': %s", patchType, err),
-		)
-	}
-
-	id := string(patchResp.GetUID())
+	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(patchResp, gzipLastAppliedConfig))
+	d.Set("manifest", getLastAppliedConfig(resp, gzipLastAppliedConfig))
 
 	return kustomizationResourceRead(d, m)
 }
@@ -397,15 +286,16 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
 
-	srcJSON := d.Get("manifest").(string)
-	u, err := parseJSON(srcJSON)
+	km := newKManifest(mapper, client)
+
+	err := parseResourceData(km, d.Get("manifest").(string))
 	if err != nil {
-		return logError(fmt.Errorf("JSON parse error: %s", err))
+		return err
 	}
 
 	// look for all versions of the GroupKind in case the resource uses a
 	// version that is no longer current
-	mappings, err := mapper.RESTMappings(u.GroupVersionKind().GroupKind())
+	_, err = km.mappings()
 	if err != nil {
 		if k8smeta.IsNoMatchError(err) {
 			// If the Kind does not exist in the K8s API,
@@ -415,13 +305,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	namespace := u.GetNamespace()
-	name := u.GetName()
-
-	err = client.
-		Resource(mappings[0].Resource).
-		Namespace(namespace).
-		Delete(context.TODO(), name, k8smetav1.DeleteOptions{})
+	err = km.apiDelete(k8smetav1.DeleteOptions{})
 	if err != nil {
 		// Consider not found during deletion a success
 		if k8serrors.IsNotFound(err) {
@@ -429,18 +313,12 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 			return nil
 		}
 
-		return logErrorForResource(
-			u,
-			fmt.Errorf("delete failed : %s", err),
-		)
+		return err
 	}
 
-	_, err = waitForGVKDeleted(d, client, mappings[0], namespace, name)
+	err = km.waitDeleted(time.Duration(7 * time.Minute))
 	if err != nil {
-		return logErrorForResource(
-			u,
-			fmt.Errorf("timed out waiting for delete: %s", err),
-		)
+		return err
 	}
 
 	d.SetId("")
@@ -457,7 +335,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	if err != nil {
 		return nil, logError(err)
 	}
-	gk := k8sschema.GroupKind{Group: k.Group, Kind: k.Kind}
+	gk := k8sschema.GroupKind{Group: k.group, Kind: k.kind}
 
 	// We don't need to use a specific API version here, as we're going to store the
 	// resource using the LastAppliedConfig information which we can get from any
@@ -465,17 +343,17 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	mappings, err := mapper.RESTMappings(gk)
 	if err != nil {
 		return nil, logError(
-			fmt.Errorf("group: %q, kind: %q, namespace: %q, name: %q: failed to query GVR: %s", gk.Group, gk.Kind, k.Namespace, k.Name, err),
+			fmt.Errorf("api error \"%s/%s/%s/%s\": %s", gk.Group, gk.Kind, k.namespace, k.name, err),
 		)
 	}
 
 	resp, err := client.
 		Resource(mappings[0].Resource).
-		Namespace(k.Namespace).
-		Get(context.TODO(), k.Name, k8smetav1.GetOptions{})
+		Namespace(k.namespace).
+		Get(context.TODO(), k.name, k8smetav1.GetOptions{})
 	if err != nil {
 		return nil, logError(
-			fmt.Errorf("group: %q, kind: %q, namespace: %q, name: %q: get failed: %s", gk.Group, gk.Kind, k.Namespace, k.Name, err),
+			fmt.Errorf("\"%s/%s/%s/%s\": %s", gk.Group, gk.Kind, k.namespace, k.name, err),
 		)
 	}
 
@@ -485,7 +363,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	lac := getLastAppliedConfig(resp, gzipLastAppliedConfig)
 	if lac == "" {
 		return nil, logError(
-			fmt.Errorf("group: %q, kind: %q, namespace: %q, name: %q: can not import resources without %q or %q annotation", gk.Group, gk.Kind, k.Namespace, k.Name, lastAppliedConfigAnnotation, gzipLastAppliedConfigAnnotation),
+			fmt.Errorf("\"%s/%s/%s/%s\": can not import resources without %q or %q annotation", gk.Group, gk.Kind, k.namespace, k.name, lastAppliedConfigAnnotation, gzipLastAppliedConfigAnnotation),
 		)
 	}
 
