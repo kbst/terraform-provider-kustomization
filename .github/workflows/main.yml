@@ -361,6 +361,7 @@ jobs:
     - name: 'Temporarily use old provider version'
       run: |
         mv test-schema-migration._tf test.tf
+        mv test-with-resource-kubeconfig.tf test-with-resource-kubeconfig._tf
 
     - name: 'Terraform Init'
       run: terraform init

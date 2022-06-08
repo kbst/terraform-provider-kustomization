@@ -43,15 +43,15 @@ func setLastAppliedConfig(u *k8sunstructured.Unstructured, srcJSON string, gzipL
 		if sErr != nil {
 			needsGzip = true
 		}
-	
+
 		if needsGzip {
 			var buf bytes.Buffer
 			zw := gzip.NewWriter(&buf)
-	
+
 			_, err1 := zw.Write([]byte(srcJSON))
-	
+
 			err2 := zw.Close()
-	
+
 			if err1 == nil && err2 == nil {
 				annotations[gzipLastAppliedConfigAnnotation] = base64.StdEncoding.EncodeToString(buf.Bytes())
 				delete(annotations, lastAppliedConfigAnnotation)
@@ -74,17 +74,17 @@ func getLastAppliedConfig(u *k8sunstructured.Unstructured, gzipLastAppliedConfig
 			if err != nil {
 				log.Fatal(err)
 			}
-	
+
 			var buf bytes.Buffer
 			buf.Write(gzDec)
-	
+
 			zr, err1 := gzip.NewReader(&buf)
-	
+
 			lacBuf := new(strings.Builder)
 			_, err2 := io.Copy(lacBuf, zr)
-	
+
 			err3 := zr.Close()
-	
+
 			// in case of any error, fall back to the uncompressed lac
 			if err1 == nil && err2 == nil && err3 == nil {
 				lac = lacBuf.String()
@@ -95,9 +95,9 @@ func getLastAppliedConfig(u *k8sunstructured.Unstructured, gzipLastAppliedConfig
 	return strings.TrimRight(lac, "\r\n")
 }
 
-func getOriginalModifiedCurrent(originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
-	client := m.(*Config).Client
-	mapper := m.(*Config).Mapper
+func getOriginalModifiedCurrent(k *KubeClient, originalJSON string, modifiedJSON string, currentAllowNotFound bool, m interface{}) (original []byte, modified []byte, current []byte, err error) {
+	client := k.Client
+	mapper := k.Mapper
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	n, err := parseJSON(modifiedJSON)

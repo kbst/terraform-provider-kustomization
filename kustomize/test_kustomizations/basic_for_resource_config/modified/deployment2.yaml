@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: test2
+  name: test2
+  namespace: test-basic-for-resource-config
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test2
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: test2
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        resources: {}
+status: {}

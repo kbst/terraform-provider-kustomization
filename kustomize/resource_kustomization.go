@@ -31,17 +31,50 @@ func kustomizationResource() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"manifest": &schema.Schema{
+			"manifest": {
 				Type:     schema.TypeString,
 				Required: true,
+			},
+			"kubeconfig_path": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				Description:   "Path to a kubeconfig file. Can be set using KUBECONFIG_PATH env var",
+				ConflictsWith: []string{"kubeconfig_raw"},
+			},
+			"kubeconfig_raw": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				Description:   "Raw kube config. If kubeconfig_raw is set, KUBECONFIG_PATH is ignored.",
+				ConflictsWith: []string{"kubeconfig_path"},
+			},
+			"context": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.",
 			},
 		},
 	}
 }
 
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
+	kubeconfigPath := d.Get("kubeconfig_path").(string)
+	kubeconfigRaw := d.Get("kubeconfig_raw").(string)
+	kubeContext := d.Get("context").(string)
+
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+
+	if kubeconfigPath != "" || kubeconfigRaw != "" || kubeContext != "" {
+		k, err := initializeClient(kubeconfigRaw, kubeconfigPath, kubeContext, false)
+
+		if k == nil || err != nil {
+			return fmt.Errorf("provider kustomization: %s", err)
+		}
+
+		client = k.Client
+		mapper = k.Mapper
+	}
+
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	srcJSON := d.Get("manifest").(string)
@@ -89,7 +122,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 
 	// for secrets of type service account token
 	// wait for service account to exist
-	// https://github.com/kubernetes/kubernetes/issues/109401
+	// https://github.com/kubernetes/kubernetes/issues/19401
 	if (u.GetKind() == "Secret") &&
 		(u.UnstructuredContent()["type"] != nil) &&
 		(u.UnstructuredContent()["type"].(string) == string(k8scorev1.SecretTypeServiceAccountToken)) {
@@ -136,12 +169,10 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 
 	d.Set("manifest", getLastAppliedConfig(resp, gzipLastAppliedConfig))
 
-	return kustomizationResourceRead(d, m)
+	return kustomizationResourceReadWithClient(d, &KubeClient{client, mapper}, m)
 }
 
-func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(*Config).Client
-	mapper := m.(*Config).Mapper
+func kustomizationResourceReadWithClient(d *schema.ResourceData, k *KubeClient, m interface{}) error {
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	srcJSON := d.Get("manifest").(string)
@@ -150,7 +181,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 		return logError(fmt.Errorf("JSON parse error: %s", err))
 	}
 
-	mapping, err := mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
+	mapping, err := k.Mapper.RESTMapping(u.GroupVersionKind().GroupKind(), u.GroupVersionKind().Version)
 	if err != nil {
 		return logErrorForResource(
 			u,
@@ -158,7 +189,7 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 		)
 	}
 
-	resp, err := client.
+	resp, err := k.Client.
 		Resource(mapping.Resource).
 		Namespace(u.GetNamespace()).
 		Get(context.TODO(), u.GetName(), k8smetav1.GetOptions{})
@@ -177,9 +208,48 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m interface{}) error {
+func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
+	kubeconfigPath := d.Get("kubeconfig_path").(string)
+	kubeconfigRaw := d.Get("kubeconfig_raw").(string)
+	kubeContext := d.Get("context").(string)
+
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+
+	if kubeconfigPath != "" || kubeconfigRaw != "" || kubeContext != "" {
+		k, err := initializeClient(kubeconfigRaw, kubeconfigPath, kubeContext, false)
+
+		if k == nil || err != nil {
+			return fmt.Errorf("provider kustomization: %s", err)
+		}
+
+		client = k.Client
+		mapper = k.Mapper
+	}
+
+	kustomizationResourceReadWithClient(d, &KubeClient{client, mapper}, m)
+
+	return nil
+}
+
+func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m interface{}) error {
+	kubeconfigPath := d.Get("kubeconfig_path").(string)
+	kubeconfigRaw := d.Get("kubeconfig_raw").(string)
+	kubeContext := d.Get("context").(string)
+
+	client := m.(*Config).Client
+	mapper := m.(*Config).Mapper
+
+	if kubeconfigPath != "" || kubeconfigRaw != "" || kubeContext != "" {
+		k, err := initializeClient(kubeconfigRaw, kubeconfigPath, kubeContext, false)
+
+		if k == nil || err != nil {
+			return fmt.Errorf("provider kustomization: %s", err)
+		}
+
+		client = k.Client
+		mapper = k.Mapper
+	}
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
 
@@ -218,6 +288,7 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 	}
 
 	original, modified, current, err := getOriginalModifiedCurrent(
+		&KubeClient{client, mapper},
 		originalJSON.(string),
 		modifiedJSON.(string),
 		true,
@@ -283,8 +354,23 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 }
 
 func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, error) {
+	kubeconfigPath := d.Get("kubeconfig_path").(string)
+	kubeconfigRaw := d.Get("kubeconfig_raw").(string)
+	kubeContext := d.Get("context").(string)
+
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+
+	if kubeconfigPath != "" || kubeconfigRaw != "" || kubeContext != "" {
+		k, err := initializeClient(kubeconfigRaw, kubeconfigPath, kubeContext, false)
+
+		if k == nil || err != nil {
+			return false, fmt.Errorf("provider kustomization: %s", err)
+		}
+
+		client = k.Client
+		mapper = k.Mapper
+	}
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -320,8 +406,24 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 }
 
 func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
+	kubeconfigPath := d.Get("kubeconfig_path").(string)
+	kubeconfigRaw := d.Get("kubeconfig_raw").(string)
+	kubeContext := d.Get("context").(string)
+
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+
+	if kubeconfigPath != "" || kubeconfigRaw != "" || kubeContext != "" {
+		k, err := initializeClient(kubeconfigRaw, kubeconfigPath, kubeContext, false)
+
+		if k == nil || err != nil {
+			return fmt.Errorf("provider kustomization: %s", err)
+		}
+
+		client = k.Client
+		mapper = k.Mapper
+	}
+
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	originalJSON, modifiedJSON := d.GetChange("manifest")
@@ -354,6 +456,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	original, modified, current, err := getOriginalModifiedCurrent(
+		&KubeClient{client, mapper},
 		originalJSON.(string),
 		modifiedJSON.(string),
 		false,
@@ -390,12 +493,27 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 
 	d.Set("manifest", getLastAppliedConfig(patchResp, gzipLastAppliedConfig))
 
-	return kustomizationResourceRead(d, m)
+	return kustomizationResourceReadWithClient(d, &KubeClient{client, mapper}, m)
 }
 
 func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
+	kubeconfigPath := d.Get("kubeconfig_path").(string)
+	kubeconfigRaw := d.Get("kubeconfig_raw").(string)
+	kubeContext := d.Get("context").(string)
+
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+
+	if kubeconfigPath != "" || kubeconfigRaw != "" || kubeContext != "" {
+		k, err := initializeClient(kubeconfigRaw, kubeconfigPath, kubeContext, false)
+
+		if k == nil || err != nil {
+			return fmt.Errorf("provider kustomization: %s", err)
+		}
+
+		client = k.Client
+		mapper = k.Mapper
+	}
 
 	srcJSON := d.Get("manifest").(string)
 	u, err := parseJSON(srcJSON)
@@ -449,9 +567,24 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 }
 
 func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+	kubeconfigPath := d.Get("kubeconfig_path").(string)
+	kubeconfigRaw := d.Get("kubeconfig_raw").(string)
+	kubeContext := d.Get("context").(string)
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
-	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+
+	if kubeconfigPath != "" || kubeconfigRaw != "" || kubeContext != "" {
+		k, err := initializeClient(kubeconfigRaw, kubeconfigPath, kubeContext, false)
+
+		if k == nil || err != nil {
+			return nil, fmt.Errorf("provider kustomization: %s", err)
+		}
+
+		client = k.Client
+		mapper = k.Mapper
+	}
 
 	k, err := parseEitherIdFormat(d.Id())
 	if err != nil {
