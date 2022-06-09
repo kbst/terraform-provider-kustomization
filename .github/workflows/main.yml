@@ -216,66 +216,6 @@ jobs:
     - name: 'Terraform Apply'
       run: kubectl exec -it terraform -- terraform apply --auto-approve
 
-  int_test_state_import_legacy:
-    runs-on: ubuntu-latest
-    needs: [compile_provider]
-
-    env:
-      KUBECONFIG_PATH: ~/.kube/config
-
-    steps:
-    - name: 'Checkout'
-      uses: actions/checkout@v1
-
-    - name: 'Setup Kind'
-      uses: engineerd/setup-kind@v0.5.0
-      with:
-        version: "v0.9.0"
-
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1.2.1
-      with:
-        terraform_wrapper: false
-        terraform_version: "${{ env.TERRAFORM_VERSION }}"
-
-    - name: 'Download terraform-plugins'
-      uses: actions/download-artifact@v2
-      with:
-        name: terraform-plugins
-        path: terraform.d/plugins
-
-    - name: 'Ensure provider is executable'
-      run: chmod +x terraform.d/plugins/registry.terraform.io/kbst/kustomization/1.0.0/linux_amd64/terraform-provider-kustomization_v1.0.0
-
-    - name: 'Download kustomize'
-      run: |
-        wget https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.5.4/kustomize_v3.5.4_linux_amd64.tar.gz
-        sudo tar -C /usr/local/bin -xvf kustomize_v3.5.4_linux_amd64.tar.gz
-        kustomize version
-
-    - name: 'Kubectl apply'
-      run: |
-        kustomize build kustomize/test_kustomizations/basic/initial | kubectl apply -f -
-
-    - name: 'Create provider.tf with kubeconfig_raw'
-      run: |
-        echo "provider "kustomization" {" > provider.tf
-        echo "  legacy_id_format = true" >> provider.tf
-        echo "}" >> provider.tf
-
-    - name: 'Terraform Init'
-      run: terraform init
-
-    - name: 'Terraform Import'
-      run: |
-        terraform import 'kustomization_resource.from_build["~G_v1_Namespace|~X|test-basic"]' '~G_v1_Namespace|~X|test-basic'
-        terraform import 'kustomization_resource.from_build["apps_v1_Deployment|test-basic|test"]' 'apps_v1_Deployment|test-basic|test'
-        terraform import 'kustomization_resource.from_build["~G_v1_Service|test-basic|test"]' '~G_v1_Service|test-basic|test'
-        terraform import 'kustomization_resource.from_build["networking.k8s.io_v1_Ingress|test-basic|test"]' 'networking.k8s.io_v1_Ingress|test-basic|test'
-
-    - name: 'Terraform Apply'
-      run: terraform apply --auto-approve
-
   int_test_state_import:
     runs-on: ubuntu-latest
     needs: [compile_provider]
@@ -316,12 +256,6 @@ jobs:
     - name: 'Kubectl apply'
       run: |
         kustomize build kustomize/test_kustomizations/basic/initial | kubectl apply -f -
-
-    - name: 'Create provider.tf with kubeconfig_raw'
-      run: |
-        echo "provider "kustomization" {" > provider.tf
-        echo "  legacy_id_format = false" >> provider.tf
-        echo "}" >> provider.tf
 
     - name: 'Terraform Init'
       run: terraform init
@@ -461,7 +395,6 @@ jobs:
       - int_test_kubeconfig_path
       - int_test_kubeconfig_raw
       - int_test_in_cluster
-      - int_test_state_import_legacy
       - int_test_state_import
       - int_test_kubestack_kind
     if: startsWith(github.ref, 'refs/tags/v')
