@@ -9,21 +9,21 @@ import (
 
 func TestDeterminePrefix(t *testing.T) {
 	for _, id := range residListFirst {
-		kr, _ := parseProviderId(id)
+		kr := mustParseProviderId(id)
 		p := determinePrefix(kr)
 		e := uint32(1)
 		assert.Equal(t, e, p, nil)
 	}
 
 	for _, id := range residListDefault {
-		kr, _ := parseProviderId(id)
+		kr := mustParseProviderId(id)
 		p := determinePrefix(kr)
 		e := uint32(5)
 		assert.Equal(t, e, p, nil)
 	}
 
 	for _, id := range residListLast {
-		kr, _ := parseProviderId(id)
+		kr := mustParseProviderId(id)
 		p := determinePrefix(kr)
 		e := uint32(9)
 		assert.Equal(t, e, p, nil)

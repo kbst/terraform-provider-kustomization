@@ -9,7 +9,7 @@ func flattenKustomizationIDs(rm resmap.ResMap) (ids []string, idsPrio [][]string
 	p1 := []string{}
 	p2 := []string{}
 	for _, id := range rm.AllIds() {
-		kr := &KubernetesResource{
+		kr := &K8sResId{
 			Group:     id.Group,
 			Kind:      id.Kind,
 			Namespace: id.Namespace,
@@ -38,7 +38,7 @@ func flattenKustomizationIDs(rm resmap.ResMap) (ids []string, idsPrio [][]string
 func flattenKustomizationResources(rm resmap.ResMap) (res map[string]string, err error) {
 	res = make(map[string]string)
 	for _, r := range rm.Resources() {
-		kr := &KubernetesResource{
+		kr := &K8sResId{
 			Group:     r.CurId().Group,
 			Kind:      r.CurId().Kind,
 			Namespace: r.GetNamespace(),

@@ -30,7 +30,7 @@ func getIDFromResources(rm resmap.ResMap) (s string, err error) {
 	return s, nil
 }
 
-func determinePrefix(kr *KubernetesResource) (p uint32) {
+func determinePrefix(kr *K8sResId) (p uint32) {
 	// Default prefix to 5
 	p = 5
 
@@ -72,7 +72,7 @@ func prefixHash(p uint32, h uint32) int {
 func idSetHash(v interface{}) int {
 	id := v.(string)
 
-	kr, _ := parseProviderId(id)
+	kr := mustParseProviderId(id)
 	p := determinePrefix(kr)
 	h := crc32.ChecksumIEEE([]byte(id))
 
