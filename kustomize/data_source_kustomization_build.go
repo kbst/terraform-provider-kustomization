@@ -76,5 +76,5 @@ func kustomizationBuild(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("kustomizationBuild: %s", err)
 	}
 
-	return setGeneratedAttributes(d, rm, m.(*Config).LegacyIDs)
+	return setGeneratedAttributes(d, rm)
 }

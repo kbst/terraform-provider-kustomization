@@ -453,7 +453,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	mapper := m.(*Config).Mapper
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
-	k, err := parseEitherIdFormat(d.Id())
+	k, err := parseProviderId(d.Id())
 	if err != nil {
 		return nil, logError(err)
 	}

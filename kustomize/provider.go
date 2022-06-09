@@ -20,11 +20,9 @@ import (
 
 // Config ...
 type Config struct {
-	Client dynamic.Interface
-	Mapper *restmapper.DeferredDiscoveryRESTMapper
-	Mutex  *sync.Mutex
-	// whether legacy IDs are produced or not
-	LegacyIDs bool
+	Client                dynamic.Interface
+	Mapper                *restmapper.DeferredDiscoveryRESTMapper
+	Mutex                 *sync.Mutex
 	GzipLastAppliedConfig bool
 }
 
@@ -70,13 +68,6 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("KUBECONFIG_CONTEXT", nil),
 				Description: "Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.",
-			},
-			"legacy_id_format": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
-				Deprecated:  "legacy_id_format will be removed in a future version",
-				Description: "If legacy_id_format is true, then resource IDs will look like group_version_kind|namespace|name. If legacy_id_format is false, then resource IDs will look like group/kind/namespace/name",
 			},
 			"gzip_last_applied_config": {
 				Type:        schema.TypeBool,
@@ -150,10 +141,9 @@ func Provider() *schema.Provider {
 		// https://github.com/kubernetes-sigs/kustomize/issues/3659
 		mu := &sync.Mutex{}
 
-		legacyIDs := d.Get("legacy_id_format").(bool)
 		gzipLastAppliedConfig := d.Get("gzip_last_applied_config").(bool)
 
-		return &Config{client, mapper, mu, legacyIDs, gzipLastAppliedConfig}, nil
+		return &Config{client, mapper, mu, gzipLastAppliedConfig}, nil
 	}
 
 	return p
