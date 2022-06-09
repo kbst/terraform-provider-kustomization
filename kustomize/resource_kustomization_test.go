@@ -29,7 +29,7 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 			//
 			// Applying initial config with a svc and deployment in a namespace
 			{
-				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial", false),
+				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -53,7 +53,7 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 			// Reverting back to initial config with only one deployment
 			// check that second deployment was purged
 			{
-				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial", false),
+				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -74,8 +74,8 @@ func TestAccResourceKustomization_basic(t *testing.T) {
 	})
 }
 
-func testAccResourceKustomizationConfig_basicInitial(path string, legacy bool) string {
-	return testAccDataSourceKustomizationConfig_basic(path, legacy) + `
+func testAccResourceKustomizationConfig_basicInitial(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-basic"]
 }
@@ -91,7 +91,7 @@ resource "kustomization_resource" "dep1" {
 }
 
 func testAccResourceKustomizationConfig_basicModified(path string) string {
-	return testAccResourceKustomizationConfig_basicInitial(path, false) + `
+	return testAccResourceKustomizationConfig_basicInitial(path) + `
 resource "kustomization_resource" "dep2" {
 	manifest = data.kustomization_build.test.manifests["apps/Deployment/test-basic/test2"]
 }
@@ -108,7 +108,7 @@ func TestAccResourceKustomization_importInvalidID(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial", false),
+				Config: testAccResourceKustomizationConfig_basicInitial("test_kustomizations/basic/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("kustomization_resource.ns", "id"),
 					resource.TestCheckResourceAttrSet("kustomization_resource.svc", "id"),
@@ -191,7 +191,7 @@ func TestAccResourceKustomization_updateInplace(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_updateInplace(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-inplace"]
 }
@@ -264,7 +264,7 @@ func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_updateRecreate(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-recreate"]
 }
@@ -312,7 +312,7 @@ func TestAccResourceKustomization_updateRecreateNameOrNamespaceChange(t *testing
 }
 
 func testAccResourceKustomizationConfig_updateRecreateNameOrNamespaceChange(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-recreate-name-or-namespace-change"]
 }
@@ -324,7 +324,7 @@ resource "kustomization_resource" "cm" {
 }
 
 func testAccResourceKustomizationConfig_updateRecreateNameOrNamespaceChangeModified(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-recreate-name-or-namespace-change-modified"]
 }
@@ -368,7 +368,7 @@ func TestAccResourceKustomization_updateRecreateStatefulSet(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_updateRecreateStatefulSet(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-recreate-statefulset"]
 }
@@ -414,7 +414,7 @@ func TestAccResourceKustomization_updateRecreateRoleRef(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_updateRecreateRoleRefInitial(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-recreate-roleref"]
 }
@@ -430,7 +430,7 @@ resource "kustomization_resource" "rb" {
 }
 
 func testAccResourceKustomizationConfig_updateRecreateRoleRefModified(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-update-recreate-roleref"]
 }
@@ -488,7 +488,7 @@ func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_upgradeAPIVersion(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-upgrade-api-version"]
 }
@@ -581,7 +581,7 @@ func TestAccResourceKustomization_crd(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_crd(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "clusteredcrd" {
 	manifest = data.kustomization_build.test.manifests["apiextensions.k8s.io/CustomResourceDefinition/_/clusteredcrds.test.example.com"]
 }
@@ -649,7 +649,7 @@ func TestAccResourceKustomization_webhook(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_webhook(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "webhook" {
 	manifest = data.kustomization_build.test.manifests["admissionregistration.k8s.io/ValidatingWebhookConfiguration/_/pod-policy.example.com"]
 }
@@ -685,7 +685,7 @@ func TestAccResourceKustomization_secretSAToken(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_secretSAToken(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-secret-sa-token"]
 }
@@ -749,7 +749,7 @@ func TestAccResourceKustomization_transformerConfigs(t *testing.T) {
 }
 
 func testAccResourceKustomizationConfig_transformerConfigs(path string) string {
-	return testAccDataSourceKustomizationConfig_basic(path, false) + `
+	return testAccDataSourceKustomizationConfig_basic(path) + `
 resource "kustomization_resource" "ns" {
 	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-transformer-config"]
 }

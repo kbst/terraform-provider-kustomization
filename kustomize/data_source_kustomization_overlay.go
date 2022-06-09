@@ -911,5 +911,5 @@ func kustomizationOverlay(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("buildKustomizeOverlay: %s", err)
 	}
 
-	return setGeneratedAttributes(d, rm, m.(*Config).LegacyIDs)
+	return setGeneratedAttributes(d, rm)
 }

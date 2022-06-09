@@ -14,7 +14,7 @@ func TestAccDataSourceKustomization_basic(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataSourceKustomizationConfig_basic("test_kustomizations/basic/initial", false),
+				Config: testAccDataSourceKustomizationConfig_basic("test_kustomizations/basic/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.kustomization_build.test", "id"),
 					resource.TestCheckResourceAttrSet("data.kustomization_build.test", "path"),
@@ -28,17 +28,15 @@ func TestAccDataSourceKustomization_basic(t *testing.T) {
 	})
 }
 
-func testAccDataSourceKustomizationConfig_basic(path string, legacy bool) string {
+func testAccDataSourceKustomizationConfig_basic(path string) string {
 	return fmt.Sprintf(`
 
-provider "kustomization" {
-	legacy_id_format = %v
-}
+provider "kustomization" {}
 
 data "kustomization_build" "test" {
 	path = "%s"
 }
-`, legacy, path)
+`, path)
 }
 
 func TestAccDataSourceKustomization_legacyName(t *testing.T) {
@@ -77,7 +75,7 @@ func TestAccDataSourceKustomization_helmChart(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataSourceKustomizationConfig_helm("test_kustomizations/helm/initial", false),
+				Config: testAccDataSourceKustomizationConfig_helm("test_kustomizations/helm/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.kustomization_build.test", "id"),
 					resource.TestCheckResourceAttrSet("data.kustomization_build.test", "path"),
@@ -93,12 +91,10 @@ func TestAccDataSourceKustomization_helmChart(t *testing.T) {
 	})
 }
 
-func testAccDataSourceKustomizationConfig_helm(path string, legacy bool) string {
+func testAccDataSourceKustomizationConfig_helm(path string) string {
 	return fmt.Sprintf(`
 
-provider "kustomization" {
-	legacy_id_format = %v
-}
+provider "kustomization" {}
 
 data "kustomization_build" "test" {
 	path = "%s"
@@ -116,5 +112,5 @@ output "service" {
 output "deployment" {
 	value = data.kustomization_build.test.manifests["apps/Deployment/test-basic/nginx"]
 }
-`, legacy, path)
+`, path)
 }

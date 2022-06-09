@@ -30,7 +30,7 @@ func getIDFromResources(rm resmap.ResMap) (s string, err error) {
 	return s, nil
 }
 
-func determinePrefix(kr *KubernetesResource) (p uint32) {
+func determinePrefix(kr *K8sResId) (p uint32) {
 	// Default prefix to 5
 	p = 5
 
@@ -72,7 +72,7 @@ func prefixHash(p uint32, h uint32) int {
 func idSetHash(v interface{}) int {
 	id := v.(string)
 
-	kr := mustParseEitherIdFormat(id)
+	kr := mustParseProviderId(id)
 	p := determinePrefix(kr)
 	h := crc32.ChecksumIEEE([]byte(id))
 
@@ -93,15 +93,15 @@ func runKustomizeBuild(fSys filesys.FileSystem, path string, kOpts *schema.Resou
 	return rm, nil
 }
 
-func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap, legacy bool) error {
-	ids, idsPrio, err := flattenKustomizationIDs(rm, legacy)
+func setGeneratedAttributes(d *schema.ResourceData, rm resmap.ResMap) error {
+	ids, idsPrio, err := flattenKustomizationIDs(rm)
 	if err != nil {
 		return fmt.Errorf("couldn't flatten kustomization IDs: %s", err)
 	}
 	d.Set("ids", ids)
 	d.Set("ids_prio", idsPrio)
 
-	resources, err := flattenKustomizationResources(rm, legacy)
+	resources, err := flattenKustomizationResources(rm)
 	if err != nil {
 		return fmt.Errorf("couldn't flatten resources: %s", err)
 	}
