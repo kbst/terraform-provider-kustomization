@@ -803,12 +803,14 @@ func getResourceFromTestState(s *terraform.State, n string) (ur *k8sunstructured
 	}
 
 	srcJSON := rs.Primary.Attributes["manifest"]
-	u, err := parseJSON(srcJSON)
+	km := kManifest{}
+
+	err = km.load([]byte(srcJSON))
 	if err != nil {
 		return nil, err
 	}
 
-	return u, nil
+	return km.resource, nil
 }
 
 func getResourceFromK8sAPI(u *k8sunstructured.Unstructured) (resp *k8sunstructured.Unstructured, err error) {

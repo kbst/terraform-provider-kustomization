@@ -11,19 +11,20 @@ import (
 
 func TestLastAppliedConfig(t *testing.T) {
 	srcJSON := "{\"apiVersion\": \"v1\", \"kind\": \"Namespace\", \"metadata\": {\"name\": \"test-unit\"}}"
-	u, err := parseJSON(srcJSON)
+	km := &kManifest{}
+	err := km.load([]byte(srcJSON))
 	if err != nil {
 		t.Errorf("Error: %s", err)
 	}
-	setLastAppliedConfig(u, srcJSON, true)
+	setLastAppliedConfig(km, true)
 
-	annotations := u.GetAnnotations()
+	annotations := km.resource.GetAnnotations()
 	count := len(annotations)
 	if count != 1 {
 		t.Errorf("TestLastAppliedConfig: incorrect number of annotations, got: %d, want: %d.", count, 1)
 	}
 
-	lac := getLastAppliedConfig(u, true)
+	lac := getLastAppliedConfig(km.resource, true)
 	if lac != srcJSON {
 		t.Errorf("TestLastAppliedConfig: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
 	}
@@ -41,13 +42,15 @@ func randomDataHelper(n int) string {
 func TestLastAppliedConfigCompressed(t *testing.T) {
 	filler := randomDataHelper(256 * (1 << 10))
 	srcJSON := fmt.Sprintf("{\"apiVersion\": \"v1\", \"kind\": \"ConfigMap\", \"metadata\": {\"name\": \"test-unit\", \"namespace\": \"test-unit\"}, \"data\": {\"payload\": %q}}", filler)
-	u, err := parseJSON(srcJSON)
+
+	km := &kManifest{}
+	err := km.load([]byte(srcJSON))
 	if err != nil {
 		t.Errorf("Error: %s", err)
 	}
-	setLastAppliedConfig(u, srcJSON, true)
+	setLastAppliedConfig(km, true)
 
-	annotations := u.GetAnnotations()
+	annotations := km.resource.GetAnnotations()
 
 	_, ok := annotations[gzipLastAppliedConfigAnnotation]
 	assert.Equal(t, true, ok, "TestLastAppliedConfigCompressed: did not have gzipLastAppliedConfig annotation")
@@ -57,7 +60,7 @@ func TestLastAppliedConfigCompressed(t *testing.T) {
 		t.Errorf("TestLastAppliedConfigCompressed: incorrect number of annotations, got: %d, want: %d.", count, 1)
 	}
 
-	lac := getLastAppliedConfig(u, true)
+	lac := getLastAppliedConfig(km.resource, true)
 	if lac != srcJSON {
 		t.Errorf("TestLastAppliedConfigCompressed: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
 	}
@@ -66,13 +69,15 @@ func TestLastAppliedConfigCompressed(t *testing.T) {
 func TestLastAppliedConfigCompressionDisabled(t *testing.T) {
 	filler := randomDataHelper(256 * (1 << 10))
 	srcJSON := fmt.Sprintf("{\"apiVersion\": \"v1\", \"kind\": \"ConfigMap\", \"metadata\": {\"name\": \"test-unit\", \"namespace\": \"test-unit\"}, \"data\": {\"payload\": %q}}", filler)
-	u, err := parseJSON(srcJSON)
+
+	km := &kManifest{}
+	err := km.load([]byte(srcJSON))
 	if err != nil {
 		t.Errorf("Error: %s", err)
 	}
-	setLastAppliedConfig(u, srcJSON, false)
+	setLastAppliedConfig(km, false)
 
-	annotations := u.GetAnnotations()
+	annotations := km.resource.GetAnnotations()
 
 	_, ok := annotations[lastAppliedConfigAnnotation]
 	assert.Equal(t, true, ok, "TestLastAppliedConfigCompressionDisabled: did not have lastAppliedConfig annotation")
@@ -85,22 +90,21 @@ func TestLastAppliedConfigCompressionDisabled(t *testing.T) {
 		t.Errorf("TestLastAppliedConfigCompressionDisabled: incorrect number of annotations, got: %d, want: %d.", count, 1)
 	}
 
-	lac := getLastAppliedConfig(u, false)
+	lac := getLastAppliedConfig(km.resource, false)
 	if lac != srcJSON {
 		t.Errorf("TestLastAppliedConfigCompressionDisabled: incorrect annotation value, got: %s, want: %s.", srcJSON, lac)
 	}
 }
 
 func TestGetPatchStrategicMergePatch1(t *testing.T) {
-	o, _ := parseJSON(testGetPatchStrategicMergePatch1OriginalJSON)
-	m, _ := parseJSON(testGetPatchStrategicMergePatch1ModifiedJSON)
-	c, _ := parseJSON(testGetPatchStrategicMergePatch1CurrentJSON)
+	kmo := kManifest{}
+	kmm := kManifest{}
+	kmc := kManifest{}
+	kmo.load([]byte(testGetPatchStrategicMergePatch1OriginalJSON))
+	kmm.load([]byte(testGetPatchStrategicMergePatch1ModifiedJSON))
+	kmc.load([]byte(testGetPatchStrategicMergePatch1CurrentJSON))
 
-	original, _ := o.MarshalJSON()
-	modified, _ := m.MarshalJSON()
-	current, _ := c.MarshalJSON()
-
-	p, pt, err := getPatch(o.GroupVersionKind(), original, modified, current)
+	pt, p, err := getPatch(kmm.gvk(), kmo.json, kmm.json, kmc.json)
 	assert.Equal(t, nil, err, nil)
 	assert.Equal(t, testGetPatchStrategicMergePatch1PatchJSON, string(p), nil)
 	assert.Equal(t, types.StrategicMergePatchType, pt, nil)
@@ -112,15 +116,14 @@ var testGetPatchStrategicMergePatch1CurrentJSON string = `{"apiVersion":"apps/v1
 var testGetPatchStrategicMergePatch1PatchJSON string = `{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-update-args-command\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"args\":[\"-V\"],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}\n"},"creationTimestamp":null},"spec":{"template":{"spec":{"$setElementOrder/containers":[{"name":"nginx"}],"containers":[{"args":["-V"],"command":null,"name":"nginx"}]}}}}`
 
 func TestGetPatchStrategicMergePatch2(t *testing.T) {
-	o, _ := parseJSON(testGetPatchStrategicMergePatch2OriginalJSON)
-	m, _ := parseJSON(testGetPatchStrategicMergePatch2ModifiedJSON)
-	c, _ := parseJSON(testGetPatchStrategicMergePatch2CurrentJSON)
+	kmo := kManifest{}
+	kmm := kManifest{}
+	kmc := kManifest{}
+	kmo.load([]byte(testGetPatchStrategicMergePatch2OriginalJSON))
+	kmm.load([]byte(testGetPatchStrategicMergePatch2ModifiedJSON))
+	kmc.load([]byte(testGetPatchStrategicMergePatch2CurrentJSON))
 
-	original, _ := o.MarshalJSON()
-	modified, _ := m.MarshalJSON()
-	current, _ := c.MarshalJSON()
-
-	p, pt, err := getPatch(o.GroupVersionKind(), original, modified, current)
+	pt, p, err := getPatch(kmm.gvk(), kmo.json, kmm.json, kmc.json)
 	assert.Equal(t, nil, err, nil)
 	assert.Equal(t, testGetPatchStrategicMergePatch2PatchJSON, string(p), nil)
 	assert.Equal(t, types.StrategicMergePatchType, pt, nil)
@@ -132,15 +135,14 @@ var testGetPatchStrategicMergePatch2CurrentJSON string = `{"apiVersion":"apps/v1
 var testGetPatchStrategicMergePatch2PatchJSON string = `{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-update-args-command\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{\"type\":\"Recreate\"},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"command\":[\"sleep\",\"infinity\"],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}\n"},"creationTimestamp":null},"spec":{"strategy":{"$retainKeys":["type"],"type":"Recreate"}}}`
 
 func TestGetPatchMergePatch(t *testing.T) {
-	o, _ := parseJSON(`{"apiVersion":"test.example.com/v1alpha1","kind":"Namespacedcrd","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"test.example.com/v1alpha1\",\"kind\":\"Namespacedcrd\",\"metadata\":{\"name\":\"namespacedco\",\"namespace\":\"test-crd\"},\"spec\":{}}\n"},"name":"namespacedco","namespace":"test-crd"},"spec":{}}`)
-	m, _ := parseJSON(`{"apiVersion":"test.example.com/v1alpha1","kind":"Namespacedcrd","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"test.example.com/v1alpha1\",\"kind\":\"Namespacedcrd\",\"metadata\":{\"name\":\"namespacedco\",\"namespace\":\"test-crd\"},\"spec\":{\"test-key\":\"test-value\"}}\n"},"name":"namespacedco","namespace":"test-crd"},"spec":{"test-key":"test-value"}}`)
-	c, _ := parseJSON(`{"apiVersion":"test.example.com/v1alpha1","kind":"Namespacedcrd","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"test.example.com/v1alpha1\",\"kind\":\"Namespacedcrd\",\"metadata\":{\"name\":\"namespacedco\",\"namespace\":\"test-crd\"},\"spec\":{}}\n"},"creationTimestamp":"2021-04-10T16:17:56Z","generation":1,"managedFields":[{"apiVersion":"test.example.com/v1alpha1","fieldsType":"FieldsV1","fieldsV1":{"f:metadata":{"f:annotations":{".":{},"f:kubectl.kubernetes.io/last-applied-configuration":{}}},"f:spec":{}},"manager":"terraform-provider-kustomization","operation":"Update","time":"2021-04-10T16:17:56Z"}],"name":"namespacedco","namespace":"test-crd","resourceVersion":"697","selfLink":"/apis/test.example.com/v1alpha1/namespaces/test-crd/namespacedcrds/namespacedco","uid":"fff6097d-acd4-4ec9-86ac-044d3e03f685"},"spec":{}}`)
+	kmo := kManifest{}
+	kmm := kManifest{}
+	kmc := kManifest{}
+	kmo.load([]byte(`{"apiVersion":"test.example.com/v1alpha1","kind":"Namespacedcrd","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"test.example.com/v1alpha1\",\"kind\":\"Namespacedcrd\",\"metadata\":{\"name\":\"namespacedco\",\"namespace\":\"test-crd\"},\"spec\":{}}\n"},"name":"namespacedco","namespace":"test-crd"},"spec":{}}`))
+	kmm.load([]byte(`{"apiVersion":"test.example.com/v1alpha1","kind":"Namespacedcrd","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"test.example.com/v1alpha1\",\"kind\":\"Namespacedcrd\",\"metadata\":{\"name\":\"namespacedco\",\"namespace\":\"test-crd\"},\"spec\":{\"test-key\":\"test-value\"}}\n"},"name":"namespacedco","namespace":"test-crd"},"spec":{"test-key":"test-value"}}`))
+	kmc.load([]byte(`{"apiVersion":"test.example.com/v1alpha1","kind":"Namespacedcrd","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"test.example.com/v1alpha1\",\"kind\":\"Namespacedcrd\",\"metadata\":{\"name\":\"namespacedco\",\"namespace\":\"test-crd\"},\"spec\":{}}\n"},"creationTimestamp":"2021-04-10T16:17:56Z","generation":1,"managedFields":[{"apiVersion":"test.example.com/v1alpha1","fieldsType":"FieldsV1","fieldsV1":{"f:metadata":{"f:annotations":{".":{},"f:kubectl.kubernetes.io/last-applied-configuration":{}}},"f:spec":{}},"manager":"terraform-provider-kustomization","operation":"Update","time":"2021-04-10T16:17:56Z"}],"name":"namespacedco","namespace":"test-crd","resourceVersion":"697","selfLink":"/apis/test.example.com/v1alpha1/namespaces/test-crd/namespacedcrds/namespacedco","uid":"fff6097d-acd4-4ec9-86ac-044d3e03f685"},"spec":{}}`))
 
-	original, _ := o.MarshalJSON()
-	modified, _ := m.MarshalJSON()
-	current, _ := c.MarshalJSON()
-
-	p, pt, err := getPatch(o.GroupVersionKind(), original, modified, current)
+	pt, p, err := getPatch(kmm.gvk(), kmo.json, kmm.json, kmc.json)
 	assert.Equal(t, nil, err, nil)
 	assert.Equal(t, `{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"test.example.com/v1alpha1\",\"kind\":\"Namespacedcrd\",\"metadata\":{\"name\":\"namespacedco\",\"namespace\":\"test-crd\"},\"spec\":{\"test-key\":\"test-value\"}}\n"}},"spec":{"test-key":"test-value"}}`, string(p), nil)
 	assert.Equal(t, types.MergePatchType, pt, nil)
