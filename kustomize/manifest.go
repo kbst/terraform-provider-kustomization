@@ -334,12 +334,10 @@ func (km *kManifest) waitDeleted(t time.Duration) error {
 func (km *kManifest) fmtErr(err error) error {
 	pc, _, _, _ := runtime.Caller(1)
 	fn := runtime.FuncForPC(pc)
-	name, line := fn.FileLine(pc)
 
 	return fmt.Errorf(
-		"%s:%d %q: %s",
-		name,
-		line,
+		"%s %q: %s",
+		fn.Name(),
 		km.id().toString(),
 		err)
 }
