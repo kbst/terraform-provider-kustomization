@@ -606,6 +606,33 @@ resource "kustomization_resource" "ns" {
 
 //
 //
+// Fail plan invalid manifest
+func TestAccResourceKustomization_failPlanInvalid(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Expect plan to fail due to invalid roleRef
+			{
+				Config:      testAccResourceKustomizationConfig_failPlanInvalid("test_kustomizations/fail_plan_invalid"),
+				ExpectError: regexp.MustCompile("Error: github.com/kbst/terraform-provider-kustomize/kustomize.kustomizationResourceDiff \"rbac.authorization.k8s.io/ClusterRoleBinding/_/invalid\": ClusterRoleBinding.rbac.authorization.k8s.io \"invalid\" is invalid: roleRef.kind: Unsupported value: \"Role\": supported values: \"ClusterRole\""),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_failPlanInvalid(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "crb" {
+	manifest = data.kustomization_build.test.manifests["rbac.authorization.k8s.io/ClusterRoleBinding/_/invalid"]
+}
+`
+}
+
+//
+//
 // Webhook Test
 func TestAccResourceKustomization_webhook(t *testing.T) {
 

@@ -167,30 +167,57 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 
 	do, dm := d.GetChange("manifest")
 
+	kmm := newKManifest(mapper, client)
+	err := kmm.load([]byte(dm.(string)))
+	if err != nil {
+		return err
+	}
+	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
+
 	if do.(string) == "" {
+		// diffing for create
+		_, err := kmm.mappings()
+		if err != nil {
+			// if there are no mappings we can't dry-run
+			// this is for CRDs that do not exist yet
+			return nil
+		}
+
+		_, err = kmm.apiCreate(k8smetav1.CreateOptions{DryRun: []string{k8smetav1.DryRunAll}})
+		if err != nil {
+			if k8serrors.IsAlreadyExists(err) {
+				// this is an edge case during tests
+				// get change above has empty original
+				// yet the create request fails with
+				// Error running pre-apply refresh
+				return nil
+			}
+
+			if k8serrors.IsNotFound(err) {
+				// we're dry-running a create
+				// the notfound seems mostly the namespace
+				return nil
+			}
+
+			return kmm.fmtErr(err)
+		}
+
 		return nil
 	}
 
+	// diffing for update
 	kmo := newKManifest(mapper, client)
-	err := kmo.load([]byte(do.(string)))
+	err = kmo.load([]byte(do.(string)))
 	if err != nil {
 		return err
 	}
-
-	kmm := newKManifest(mapper, client)
-	err = kmm.load([]byte(dm.(string)))
-	if err != nil {
-		return err
-	}
+	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
 
 	if kmo.name() != kmm.name() || kmo.namespace() != kmm.namespace() {
 		// if the resource name or namespace changes, we can't patch but have to destroy and re-create
 		d.ForceNew("manifest")
 		return nil
 	}
-
-	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
-	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
 
 	pt, p, err := kmm.apiPreparePatch(kmo, true)
 	if err != nil {
