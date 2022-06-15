@@ -131,7 +131,6 @@ func getPatch(gvk k8sschema.GroupVersionKind, original []byte, modified []byte, 
 func logError(m error) error {
 	pc, _, _, _ := runtime.Caller(1)
 	fn := runtime.FuncForPC(pc)
-	name, line := fn.FileLine(pc)
 
-	return fmt.Errorf("%s:%d: %s", name, line, m)
+	return fmt.Errorf("%s: %s", fn.Name(), m)
 }
