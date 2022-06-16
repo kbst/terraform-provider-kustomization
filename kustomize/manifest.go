@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"runtime"
 	"strings"
 	"time"
 
@@ -57,7 +56,7 @@ func parseProviderId(str string) (*kManifestId, error) {
 	}, nil
 }
 
-func (k kManifestId) toString() string {
+func (k kManifestId) string() string {
 	return fmt.Sprintf("%s/%s/%s/%s", emptyToUnderscore(k.group), k.kind, emptyToUnderscore(k.namespace), k.name)
 }
 
@@ -276,7 +275,7 @@ func (km *kManifest) waitNamespace(t time.Duration) error {
 	_, err := kns.mappings()
 	if err != nil {
 		return km.fmtErr(
-			fmt.Errorf("api error %q: %s", kns.id().toString(), err),
+			fmt.Errorf("api error %q: %s", kns.id().string(), err),
 		)
 	}
 
@@ -299,7 +298,7 @@ func (km *kManifest) waitNamespace(t time.Duration) error {
 
 	_, err = stateConf.WaitForState()
 	if err != nil {
-		return km.fmtErr(fmt.Errorf("timed out waiting for: %q: %s", kns.id().toString(), err))
+		return km.fmtErr(fmt.Errorf("timed out waiting for: %q: %s", kns.id().string(), err))
 	}
 
 	return nil
@@ -332,12 +331,8 @@ func (km *kManifest) waitDeleted(t time.Duration) error {
 }
 
 func (km *kManifest) fmtErr(err error) error {
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
-
 	return fmt.Errorf(
-		"%s %q: %s",
-		fn.Name(),
-		km.id().toString(),
+		"%q: %s",
+		km.id().string(),
 		err)
 }

@@ -16,15 +16,15 @@ func flattenKustomizationIDs(rm resmap.ResMap) (ids []string, idsPrio [][]string
 			name:      id.Name,
 		}
 
-		ids = append(ids, kr.toString())
+		ids = append(ids, kr.string())
 
 		p := determinePrefix(kr)
 		if p < 5 {
-			p0 = append(p0, kr.toString())
+			p0 = append(p0, kr.string())
 		} else if p == 9 {
-			p2 = append(p2, kr.toString())
+			p2 = append(p2, kr.string())
 		} else {
-			p1 = append(p1, kr.toString())
+			p1 = append(p1, kr.string())
 		}
 	}
 
@@ -49,7 +49,7 @@ func flattenKustomizationResources(rm resmap.ResMap) (res map[string]string, err
 		if err != nil {
 			return nil, err
 		}
-		res[kr.toString()] = string(json)
+		res[kr.string()] = string(json)
 	}
 	return res, nil
 }
