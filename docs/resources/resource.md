@@ -99,3 +99,4 @@ resource "kustomization_resource" "p2" {
 ## Argument Reference
 
 - `manifest` - (Required) JSON encoded Kubernetes resource manifest.
+- 'timeouts' - (Optional) Overwrite `create` or `delete` timeout defaults. Defaults are 5 minutes for `create` and 10 minutes for `delete`.

@@ -36,6 +36,11 @@ func kustomizationResource() *schema.Resource {
 				Required: true,
 			},
 		},
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(5 * time.Minute),
+			Delete: schema.DefaultTimeout(10 * time.Minute),
+		},
 	}
 }
 
@@ -50,13 +55,13 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	// required for CRDs
-	err = km.waitKind(time.Duration(3 * time.Minute))
+	err = km.waitKind(d.Timeout(schema.TimeoutCreate))
 	if err != nil {
 		return err
 	}
 
 	// required for namespaced resources
-	err = km.waitNamespace(time.Duration(5 * time.Minute))
+	err = km.waitNamespace(d.Timeout(schema.TimeoutCreate))
 	if err != nil {
 		return err
 	}
@@ -135,7 +140,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 		return false, err
 	}
 
-	err = km.waitKind(time.Duration(5 * time.Second))
+	err = km.waitKind(d.Timeout(schema.TimeoutCreate))
 	if err != nil {
 		if k8smeta.IsNoMatchError(err) {
 			// If the Kind does not exist in the K8s API,
@@ -343,7 +348,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	err = km.waitDeleted(time.Duration(7 * time.Minute))
+	err = km.waitDeleted(d.Timeout(schema.TimeoutDelete))
 	if err != nil {
 		return err
 	}
