@@ -51,19 +51,19 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 
 	err := km.load([]byte(d.Get("manifest").(string)))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	// required for CRDs
 	err = km.waitKind(d.Timeout(schema.TimeoutCreate))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	// required for namespaced resources
 	err = km.waitNamespace(d.Timeout(schema.TimeoutCreate))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	// for secrets of type service account token
@@ -82,14 +82,14 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 					Kind:    "ServiceAccount"}
 				mapping, err := mapper.RESTMapping(saGvk.GroupKind(), saGvk.GroupVersion().Version)
 				if err != nil {
-					return km.fmtErr(
+					return logError(km.fmtErr(
 						fmt.Errorf("api error: %q: %s", saGvk.String(), err),
-					)
+					))
 				}
 
 				_, err = waitForGVKCreated(d, client, mapping, km.namespace(), v)
 				if err != nil {
-					return km.fmtErr(fmt.Errorf("timed out waiting for: %q: %s", km.id().toString(), err))
+					return logError(km.fmtErr(fmt.Errorf("timed out waiting for: %q: %s", km.id().string(), err)))
 				}
 			}
 		}
@@ -100,7 +100,7 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 
 	resp, err := km.apiCreate(k8smetav1.CreateOptions{})
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	id := string(resp.GetUID())
@@ -116,12 +116,12 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 
 	err := km.load([]byte(d.Get("manifest").(string)))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	resp, err := km.apiGet(k8smetav1.GetOptions{})
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	id := string(resp.GetUID())
@@ -137,7 +137,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 
 	err := km.load([]byte(d.Get("manifest").(string)))
 	if err != nil {
-		return false, err
+		return false, logError(err)
 	}
 
 	err = km.waitKind(d.Timeout(schema.TimeoutCreate))
@@ -147,7 +147,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 			// the resource can't exist either
 			return false, nil
 		}
-		return false, err
+		return false, logError(err)
 	}
 
 	_, err = km.apiGet(k8smetav1.GetOptions{})
@@ -155,7 +155,7 @@ func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, e
 		if k8serrors.IsNotFound(err) {
 			return false, nil
 		}
-		return false, err
+		return false, logError(err)
 	}
 
 	return true, nil
@@ -175,7 +175,7 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 	kmm := newKManifest(mapper, client)
 	err := kmm.load([]byte(dm.(string)))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
 
@@ -204,7 +204,7 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 				return nil
 			}
 
-			return kmm.fmtErr(err)
+			return logError(kmm.fmtErr(err))
 		}
 
 		return nil
@@ -214,7 +214,7 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 	kmo := newKManifest(mapper, client)
 	err = kmo.load([]byte(do.(string)))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
 
@@ -226,7 +226,7 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 
 	pt, p, err := kmm.apiPreparePatch(kmo, true)
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
@@ -262,7 +262,7 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 			}
 		}
 
-		return err
+		return logError(err)
 	}
 
 	return nil
@@ -278,19 +278,19 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	kmo := newKManifest(mapper, client)
 	err := kmo.load([]byte(do.(string)))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	kmm := newKManifest(mapper, client)
 	err = kmm.load([]byte(dm.(string)))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	if !d.HasChange("manifest") {
-		return kmm.fmtErr(
+		return logError(kmm.fmtErr(
 			errors.New("update called without diff"),
-		)
+		))
 	}
 
 	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
@@ -298,12 +298,12 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 
 	pt, p, err := kmm.apiPreparePatch(kmo, false)
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	resp, err := kmm.apiPatch(pt, p, k8smetav1.PatchOptions{})
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	id := string(resp.GetUID())
@@ -322,7 +322,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 
 	err := parseResourceData(km, d.Get("manifest").(string))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	// look for all versions of the GroupKind in case the resource uses a
@@ -334,7 +334,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 			// the resource can't exist either
 			return nil
 		}
-		return err
+		return logError(err)
 	}
 
 	err = km.apiDelete(k8smetav1.DeleteOptions{})
@@ -345,12 +345,12 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 			return nil
 		}
 
-		return err
+		return logError(err)
 	}
 
 	err = km.waitDeleted(d.Timeout(schema.TimeoutDelete))
 	if err != nil {
-		return err
+		return logError(err)
 	}
 
 	d.SetId("")

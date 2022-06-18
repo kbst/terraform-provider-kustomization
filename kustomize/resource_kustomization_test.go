@@ -617,7 +617,7 @@ func TestAccResourceKustomization_failPlanInvalid(t *testing.T) {
 			// Expect plan to fail due to invalid roleRef
 			{
 				Config:      testAccResourceKustomizationConfig_failPlanInvalid("test_kustomizations/fail_plan_invalid"),
-				ExpectError: regexp.MustCompile("Error: github.com/kbst/terraform-provider-kustomize/kustomize.kustomizationResourceDiff \"rbac.authorization.k8s.io/ClusterRoleBinding/_/invalid\": ClusterRoleBinding.rbac.authorization.k8s.io \"invalid\" is invalid: roleRef.kind: Unsupported value: \"Role\": supported values: \"ClusterRole\""),
+				ExpectError: regexp.MustCompile("Error: github.com/kbst/terraform-provider-kustomize/kustomize.kustomizationResourceDiff: \"rbac.authorization.k8s.io/ClusterRoleBinding/_/invalid\": ClusterRoleBinding.rbac.authorization.k8s.io \"invalid\" is invalid: roleRef.kind: Unsupported value: \"Role\": supported values: \"ClusterRole\""),
 			},
 		},
 	})
