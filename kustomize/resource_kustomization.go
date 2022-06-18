@@ -179,15 +179,28 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 	}
 	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
 
+	_, err = kmm.mappings()
+	if err != nil {
+		// if there are no mappings we can't dry-run
+		// this is for CRDs that do not exist yet
+		return nil
+	}
+
+	isNamespaced, err := kmm.isNamespaced()
+	if err != nil {
+		return logError(err)
+	}
+	if isNamespaced && kmm.namespace() == "" {
+		err = kmm.fmtErr(fmt.Errorf("is namespace scoped and must set metadata.namespace"))
+		return logError(err)
+	}
+	if !isNamespaced && kmm.namespace() != "" {
+		err = kmm.fmtErr(fmt.Errorf("is not namespace scoped but has metadata.namespace set"))
+		return logError(err)
+	}
+
 	if do.(string) == "" {
 		// diffing for create
-		_, err := kmm.mappings()
-		if err != nil {
-			// if there are no mappings we can't dry-run
-			// this is for CRDs that do not exist yet
-			return nil
-		}
-
 		_, err = kmm.apiCreate(k8smetav1.CreateOptions{DryRun: []string{k8smetav1.DryRunAll}})
 		if err != nil {
 			if k8serrors.IsAlreadyExists(err) {
@@ -334,7 +347,7 @@ func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 			// the resource can't exist either
 			return nil
 		}
-		return logError(err)
+		return logError(km.fmtErr(err))
 	}
 
 	err = km.apiDelete(k8smetav1.DeleteOptions{})

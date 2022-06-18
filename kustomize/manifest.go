@@ -121,6 +121,19 @@ func (km *kManifest) namespace() string {
 	return km.id().namespace
 }
 
+func (km *kManifest) isNamespaced() (bool, error) {
+	m, err := km.mapping()
+	if err != nil {
+		return false, km.fmtErr(fmt.Errorf("api error: %s", err))
+	}
+
+	if m.Scope.Name() == k8smeta.RESTScopeNameNamespace {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func (km *kManifest) name() string {
 	return km.id().name
 }
@@ -137,10 +150,21 @@ func (km *kManifest) id() (id kManifestId) {
 func (km *kManifest) api() (api k8sdynamic.ResourceInterface, err error) {
 	gvr, err := km.gvr()
 	if err != nil {
-		return api, nil
+		return api, km.fmtErr(fmt.Errorf("api error: %s", err))
 	}
 
-	return km.client.Resource(gvr).Namespace(km.namespace()), nil
+	api = km.client.Resource(gvr)
+
+	isNamespaced, err := km.isNamespaced()
+	if err != nil {
+		return api, km.fmtErr(fmt.Errorf("api error: %s", err))
+	}
+
+	if isNamespaced {
+		api = km.client.Resource(gvr).Namespace(km.namespace())
+	}
+
+	return api, nil
 }
 
 func (km *kManifest) apiGet(opts k8smetav1.GetOptions) (resp *k8sunstructured.Unstructured, err error) {
