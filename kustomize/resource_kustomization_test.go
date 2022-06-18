@@ -606,6 +606,60 @@ resource "kustomization_resource" "ns" {
 
 //
 //
+// Fail namespace not allowed
+func TestAccResourceKustomization_failPlanInvalidNamespaceNotAllowed(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Expect plan to fail due to namespace not allowed
+			{
+				Config:      testAccResourceKustomizationConfig_failNamespaceNotAllowed("test_kustomizations/fail_namespace_not_allowed"),
+				ExpectError: regexp.MustCompile("Error: github.com/kbst/terraform-provider-kustomize/kustomize.kustomizationResourceDiff: \"rbac.authorization.k8s.io/ClusterRoleBinding/default/invalid\": is not namespace scoped but has metadata.namespace set"),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_failNamespaceNotAllowed(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "crb" {
+	manifest = data.kustomization_build.test.manifests["rbac.authorization.k8s.io/ClusterRoleBinding/default/invalid"]
+}
+`
+}
+
+//
+//
+// Fail namespace required
+func TestAccResourceKustomization_failNamespaceRequired(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Expect plan to fail due to missing namespace
+			{
+				Config:      testAccResourceKustomizationConfig_failNamespaceRequired("test_kustomizations/fail_namespace_required"),
+				ExpectError: regexp.MustCompile("Error: github.com/kbst/terraform-provider-kustomize/kustomize.kustomizationResourceDiff: \"rbac.authorization.k8s.io/RoleBinding/_/invalid\": is namespace scoped and must set metadata.namespace"),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_failNamespaceRequired(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "crb" {
+	manifest = data.kustomization_build.test.manifests["rbac.authorization.k8s.io/RoleBinding/_/invalid"]
+}
+`
+}
+
+//
+//
 // Fail plan invalid manifest
 func TestAccResourceKustomization_failPlanInvalid(t *testing.T) {
 
