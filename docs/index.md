@@ -21,7 +21,7 @@ terraform {
   required_providers {
     kustomization = {
       source  = "kbst/kustomization"
-      version = "0.7.0"
+      version = "0.9.0"
     }
   }
 }
@@ -46,12 +46,12 @@ provider "kustomization" {
 - `kubeconfig_raw` - Raw kubeconfig file. If `kubeconfig_raw` is set, `kubeconfig_path` is ignored.
 - `kubeconfig_incluster` - Set to `true` when running inside a kubernetes cluster.
 - `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is used.
-- `legacy_id_format` - (Optional) Defaults to `false`. Provided for backward compability, set to `true` to use the legacy ID format.
-- `gzip_last_applied_config` - (Optional) Defaults to `true`. Use a gzip compressed and base64 encoded value for the lastAppliedConfig annotation if a resource would otherwise exceed the Kubernetes max annotation size. All other resources use the regular uncompressed annotation. Set to `false` to disable compressed annotation.
+- `legacy_id_format` - (Optional) Defaults to `false`. Provided for backward compability, set to `true` to use the legacy ID format. Removed starting `0.9.0`.
+- `gzip_last_applied_config` - (Optional) Defaults to `true`. Use a gzip compressed and base64 encoded value for the lastAppliedConfig annotation if a resource would otherwise exceed the Kubernetes max annotation size. All other resources use the regular uncompressed annotation. Set to `false` to never use the compressed annotation.
 
 ## Migrating resource IDs from legacy format to format enabling API version upgrades
 
--> Starting with version `0.7.0` the provider defaults to the new ID format. To use the legacy format set `legacy_id_format = true`.
+-> Support for the legacy ID format has been removed in version `0.9.0`. The provider has defaulted to the new format since version `0.7.0`. If you have been using the legacy format with the `legacy_id_format = true` backwards compatibility until now, make sure to migrate IDs before upgrading to `0.9.0`.
 
 To allow the kustomization provider to manage API version upgrades, the version has been removed from resource IDs.
 As this is a breaking change, we provide a helper script to move resources in the state.
@@ -62,8 +62,6 @@ We are also taking this as an opportunity, to refactor the ID format.
  * New format: `apps/Deployment/test-ns/test-deploy` or `_/Service/test-ns/test-svc`
 
 The general form is `group/Kind/namespace/name` with `_` as a placeholder for empty values (e.g. `_/Namespace/_/test-namespace`).
-
-To keep using the legacy format of resource IDs, set `legacy_id_format` to `true` in the provider configuration.
 
 The commands below will create a file `state_mv.sh` with one `terraform state mv` command per resource.
 
@@ -97,20 +95,9 @@ bash state_mv.sh
 
 ## Imports
 
-### Default ID format
-
-With the default `legacy_id_format` set to `false` in the provider settings run, for example:
+To import existing resources, run `terraform import` as shown below.
+Resources to be imported require a valid `kubectl.kubernetes.io/last-applied-configuration` annotation.
 
 ```
 terraform import 'kustomization_resource.test["apps/Deployment/test-namespace/test-deployment"]' apps/Deployment/test-namespace/test-deployment
-```
-
-### Legacy ID format
-
-With `legacy_id_format` set to `true`, use a command like below and replace `apps_v1_Deployment|test-namespace|test-deployment` accordingly.
-
--> Please note the single quotes required for most shells.
-
-```
-terraform import 'kustomization_resource.test["apps_v1_Deployment|test-namespace|test-deployment"]' 'apps_v1_Deployment|test-namespace|test-deployment'
 ```
