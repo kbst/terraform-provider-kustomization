@@ -447,6 +447,51 @@ resource "kustomization_resource" "rb" {
 
 //
 //
+// Update_Recreate_StorageClass Test
+func TestAccResourceKustomization_updateRecreateStorageClass(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial storage class
+			{
+				Config: testAccResourceKustomizationConfig_updateRecreateStorageClassProvisioner("test_kustomizations/update_recreate_storage_class/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.scparam", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.scprov", "id"),
+				),
+			},
+			//
+			//
+			// Applying changed storage class
+			{
+				Config: testAccResourceKustomizationConfig_updateRecreateStorageClassProvisioner("test_kustomizations/update_recreate_storage_class/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("kustomization_resource.scparam", "id"),
+					resource.TestCheckResourceAttrSet("kustomization_resource.scprov", "id"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_updateRecreateStorageClassProvisioner(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "scparam" {
+	manifest = data.kustomization_build.test.manifests["storage.k8s.io/StorageClass/_/local-storage-parameters"]
+}
+
+resource "kustomization_resource" "scprov" {
+	manifest = data.kustomization_build.test.manifests["storage.k8s.io/StorageClass/_/local-storage-provisioner"]
+}
+
+`
+}
+
+//
+//
 // Upgrade_API_Version Test
 func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
 

@@ -14,7 +14,7 @@ import (
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/validation/field"
+    "k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 func kustomizationResource() *schema.Resource {
@@ -270,6 +270,14 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 				if k8serrors.HasStatusCause(err, k8smetav1.CauseTypeFieldValueInvalid) && strings.HasSuffix(msg, ": cannot change roleRef") == true {
 					d.ForceNew("manifest")
 					return nil
+				}
+
+				// if cause is updates to storage class provisioner or parameters are forbidden force a delete and re-create plan
+				if k8serrors.HasStatusCause(err, k8smetav1.CauseType(field.ErrorTypeForbidden)) {
+					if strings.HasSuffix(msg, ": updates to provisioner are forbidden.") || strings.HasPrefix(msg, "Forbidden: updates to parameters are forbidden") {
+						d.ForceNew("manifest")
+						return nil
+					}
 				}
 
 			}

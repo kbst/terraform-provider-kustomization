@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../initial
+
+patches:
+- patch: |
+    - op: replace
+      path: /parameters/test
+      value: test2
+  target:
+    group: "storage.k8s.io"
+    version: v1
+    kind: StorageClass
+    name: local-storage-parameters
+- patch: |
+    - op: replace
+      path: /provisioner
+      value: example.com/external-nfs
+  target:
+    group: "storage.k8s.io"
+    version: v1
+    kind: StorageClass
+    name: local-storage-provisioner
