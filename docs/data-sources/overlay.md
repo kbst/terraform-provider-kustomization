@@ -51,7 +51,7 @@ data "kustomization_overlay" "example" {
     "path/to/kustomization/to/inherit/from",
     "path/to/kubernetes/resource.yaml",
   ]
-  kustomize_options = {
+  kustomize_options {
     load_restrictor = "none"
   }
 }
@@ -299,7 +299,7 @@ data "kustomization_overlay" "example" {
 
 ```hcl
 data "kustomization_overlay" "example" {
-  kustomize_options = {
+  kustomize_options {
     load_restrictor = "none"
     enable_helm = true
     helm_path = "/path/to/helm"
