@@ -11,8 +11,6 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
-//
-//
 // Basic acceptance test
 func TestDataSourceKustomizationOverlay_basic(t *testing.T) {
 
@@ -97,8 +95,6 @@ data "kustomization_overlay" "test" {
 `
 }
 
-//
-//
 // Test common_annotations attr
 func TestDataSourceKustomizationOverlay_commonAnnotations(t *testing.T) {
 
@@ -134,8 +130,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test common_labels attr
 func TestDataSourceKustomizationOverlay_commonLabels(t *testing.T) {
 
@@ -171,8 +165,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test labels attr
 func TestDataSourceKustomizationOverlay_labels(t *testing.T) {
 
@@ -216,8 +208,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test components attr
 func TestDataSourceKustomizationOverlay_components(t *testing.T) {
 
@@ -249,8 +239,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test config_map_generator attr
 func TestDataSourceKustomizationOverlay_configMapGenerator(t *testing.T) {
 
@@ -310,8 +298,6 @@ output "check_cm2" {
 `
 }
 
-//
-//
 // Test namespace attr
 func TestDataSourceKustomizationOverlay_namespace(t *testing.T) {
 
@@ -346,8 +332,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test name_prefix and name_suffix attr
 func TestDataSourceKustomizationOverlay_name_prefix_suffix(t *testing.T) {
 
@@ -383,8 +367,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test resources attr
 func TestDataSourceKustomizationOverlay_resources(t *testing.T) {
 
@@ -417,8 +399,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test transformers attr
 func TestDataSourceKustomizationOverlay_transformers(t *testing.T) {
 
@@ -452,8 +432,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test crds attr
 func TestDataSourceKustomizationOverlay_crds(t *testing.T) {
 
@@ -482,8 +460,6 @@ data "kustomization_overlay" "test" {
 `
 }
 
-//
-//
 // Test generators attr
 func TestDataSourceKustomizationOverlay_generators(t *testing.T) {
 
@@ -513,8 +489,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test generator_options attr
 func TestDataSourceKustomizationOverlay_generator_options(t *testing.T) {
 
@@ -569,8 +543,6 @@ output "check_secret" {
 `
 }
 
-//
-//
 // Test images attr
 func TestDataSourceKustomizationOverlay_images(t *testing.T) {
 
@@ -607,8 +579,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test patches attr
 func TestDataSourceKustomizationOverlay_patches(t *testing.T) {
 
@@ -668,8 +638,242 @@ output "check_ingress" {
 `
 }
 
-//
-//
+// Test replacements attr
+func TestDataSourceKustomizationOverlay_replacements(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationReplacementsConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_target1", "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"replacement-pod\",\"namespace\":\"test-replacements\"},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"MODIFY_ME\",\"value\":\"this-is-replace1\"},{\"name\":\"LEAVE_ME_ALONE\",\"value\":\"this should stay untouched\"}],\"image\":\"postgres:latest\",\"name\":\"modify-me\"},{\"env\":[{\"name\":\"UNMODIFIED\",\"value\":\"still the same\"}],\"image\":\"nginx:latest\",\"name\":\"leave-me-alone\"}]}}"),
+					resource.TestCheckOutput("check_target2", "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"replacement-pod-2\",\"namespace\":\"test-replacements\"},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"MODIFY_ME\",\"value\":\"this should be ignored by reject rule\"},{\"name\":\"LEAVE_ME_ALONE\",\"value\":\"this should stay untouched\"}],\"image\":\"postgres:latest\",\"name\":\"modify-me\"},{\"env\":[{\"name\":\"UNMODIFIED\",\"value\":\"still the same\"}],\"image\":\"nginx:latest\",\"name\":\"leave-me-alone\"}]}}"),
+					resource.TestCheckOutput("check_target3", "{\"apiVersion\":\"v1\",\"data\":{\"REPLACE_ME\":\"this-is-replace1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"replacement-target\",\"namespace\":\"test-replacements\"}}"),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationReplacementsConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/replacements",
+	]
+
+	replacements {
+		source {
+			kind = "ConfigMap"
+			name = "replacement-source"
+			field_path = "data.replace1"
+		}
+		target {
+			select {
+				kind = "Pod"
+			}
+			reject {
+				name = "replacement-pod-2"
+			}
+			field_paths = ["spec.containers.[name=modify-me].env.[name=MODIFY_ME].value"]
+		}
+		target {
+			select {
+				kind = "ConfigMap"
+				name = "replacement-target"
+			}
+			field_paths = ["data.REPLACE_ME"]
+		}
+	}
+}
+
+output "check_target1" {
+	value = data.kustomization_overlay.test.manifests["_/Pod/test-replacements/replacement-pod"]
+}
+
+output "check_target2" {
+	value = data.kustomization_overlay.test.manifests["_/Pod/test-replacements/replacement-pod-2"]
+}
+
+output "check_target3" {
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/test-replacements/replacement-target"]
+}
+`
+}
+
+func TestDataSourceKustomizationOverlay_replacements_from_file(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationReplacementsFromFileConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_target1", "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"replacement-pod\",\"namespace\":\"test-replacements\"},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"MODIFY_ME\",\"value\":\"this-is-replace1\"},{\"name\":\"LEAVE_ME_ALONE\",\"value\":\"this should stay untouched\"}],\"image\":\"postgres:latest\",\"name\":\"modify-me\"},{\"env\":[{\"name\":\"UNMODIFIED\",\"value\":\"still the same\"}],\"image\":\"nginx:latest\",\"name\":\"leave-me-alone\"}]}}"),
+					resource.TestCheckOutput("check_target2", "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"replacement-pod-2\",\"namespace\":\"test-replacements\"},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"MODIFY_ME\",\"value\":\"this should be ignored by reject rule\"},{\"name\":\"LEAVE_ME_ALONE\",\"value\":\"this should stay untouched\"}],\"image\":\"postgres:latest\",\"name\":\"modify-me\"},{\"env\":[{\"name\":\"UNMODIFIED\",\"value\":\"still the same\"}],\"image\":\"nginx:latest\",\"name\":\"leave-me-alone\"}]}}"),
+					resource.TestCheckOutput("check_target3", "{\"apiVersion\":\"v1\",\"data\":{\"REPLACE_ME\":\"this-is-replace1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"replacement-target\",\"namespace\":\"test-replacements\"}}"),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationReplacementsFromFileConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/replacements",
+	]
+
+	replacements {
+		path = "test_kustomizations/replacements/replacements.yaml"
+	}
+}
+
+output "check_target1" {
+	value = data.kustomization_overlay.test.manifests["_/Pod/test-replacements/replacement-pod"]
+}
+
+output "check_target2" {
+	value = data.kustomization_overlay.test.manifests["_/Pod/test-replacements/replacement-pod-2"]
+}
+
+output "check_target3" {
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/test-replacements/replacement-target"]
+}
+`
+}
+
+func TestDataSourceKustomizationOverlay_replacements_configmap(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationReplacementsConfigMapConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_target1", "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"replacement-pod\",\"namespace\":\"test-replacements\"},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"MODIFY_ME\",\"value\":\"a generated value\"},{\"name\":\"LEAVE_ME_ALONE\",\"value\":\"this should stay untouched\"}],\"image\":\"postgres:latest\",\"name\":\"modify-me\"},{\"env\":[{\"name\":\"UNMODIFIED\",\"value\":\"still the same\"}],\"image\":\"nginx:latest\",\"name\":\"leave-me-alone\"}]}}"),
+					resource.TestCheckOutput("check_source", "{\"apiVersion\":\"v1\",\"data\":{\"replace1\":\"a generated value\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"replacement-generated\",\"namespace\":\"test-replacements\"}}"),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationReplacementsConfigMapConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/replacements",
+	]
+
+	config_map_generator {
+		name = "replacement-generated"
+		namespace = "test-replacements"
+		literals = [
+			"replace1=a generated value"
+		]
+		options {
+			disable_name_suffix_hash = true
+		}
+	}
+
+	replacements {
+		source {
+			kind = "ConfigMap"
+			name = "replacement-generated"
+			field_path = "data.replace1"
+		}
+		target {
+			select {
+				kind = "Pod"
+			}
+			reject {
+				name = "replacement-pod-2"
+			}
+			field_paths = ["spec.containers.[name=modify-me].env.[name=MODIFY_ME].value"]
+		}
+	}
+}
+
+output "check_target1" {
+	value = data.kustomization_overlay.test.manifests["_/Pod/test-replacements/replacement-pod"]
+}
+
+output "check_source" {
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/test-replacements/replacement-generated"]
+}
+`
+}
+
+func TestDataSourceKustomizationOverlay_replacements_patch(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testKustomizationReplacementsPatchConfig(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("check_target1", "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"replacement-pod\",\"namespace\":\"test-replacements\"},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"MODIFY_ME\",\"value\":\"a patched value\"},{\"name\":\"LEAVE_ME_ALONE\",\"value\":\"this should stay untouched\"}],\"image\":\"postgres:latest\",\"name\":\"modify-me\"},{\"env\":[{\"name\":\"UNMODIFIED\",\"value\":\"still the same\"}],\"image\":\"nginx:latest\",\"name\":\"leave-me-alone\"}]}}"),
+					resource.TestCheckOutput("check_source", "{\"apiVersion\":\"v1\",\"data\":{\"REPLACE_ME\":\"this should stay untouched\",\"replace1\":\"a patched value\",\"replace2\":\"this-is-replace2\"},\"kind\":\"ConfigMap\",\"metadata\":{\"name\":\"replacement-source\",\"namespace\":\"test-replacements\"}}"),
+				),
+			},
+		},
+	})
+}
+
+func testKustomizationReplacementsPatchConfig() string {
+	return `
+data "kustomization_overlay" "test" {
+	resources = [
+		"test_kustomizations/replacements",
+	]
+
+	patches {
+		target {
+			name = "replacement-source"
+			namespace = "test-replacements"
+		}
+		patch = <<-EOF
+		  - op: replace
+		    path: /data/replace1
+		    value: a patched value
+		EOF
+	}
+
+	replacements {
+		source {
+			kind = "ConfigMap"
+			name = "replacement-source"
+			field_path = "data.replace1"
+		}
+		target {
+			select {
+				kind = "Pod"
+			}
+			reject {
+				name = "replacement-pod-2"
+			}
+			field_paths = ["spec.containers.[name=modify-me].env.[name=MODIFY_ME].value"]
+		}
+	}
+}
+
+output "check_target1" {
+	value = data.kustomization_overlay.test.manifests["_/Pod/test-replacements/replacement-pod"]
+}
+
+output "check_source" {
+	value = data.kustomization_overlay.test.manifests["_/ConfigMap/test-replacements/replacement-source"]
+}
+`
+}
+
 // Test replicas attr
 func TestDataSourceKustomizationOverlay_replicas(t *testing.T) {
 
@@ -704,8 +908,6 @@ output "check" {
 `
 }
 
-//
-//
 // Test secret_generator attr
 func TestDataSourceKustomizationOverlay_secretGenerator(t *testing.T) {
 
@@ -765,8 +967,6 @@ output "check_cm2" {
 `
 }
 
-//
-//
 // Test vars attr
 func TestDataSourceKustomizationOverlay_vars(t *testing.T) {
 
@@ -840,8 +1040,6 @@ func TestDataSourceKustomizationOverlay_conflict(t *testing.T) {
 	}
 }
 
-//
-//
 // Test patch options attr
 func TestDataSourceKustomizationOverlay_patchOptionsNoop(t *testing.T) {
 

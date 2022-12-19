@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: replacement-target
+  namespace: test-replacements
+data:
+  REPLACE_ME: this should change

@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/kustomize/api/konfig"
 	"sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
+	"sigs.k8s.io/kustomize/kyaml/resid"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
@@ -68,6 +69,51 @@ func getPatchOptionsSchema() *schema.Resource {
 				Optional: true,
 			},
 			"allow_name_change": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+		},
+	}
+}
+
+func getReplacementSelectorSchema() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"group": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"version": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"kind": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"namespace": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	}
+}
+func getReplacementOptionsSchema() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"delimiter": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"index": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"create": {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
@@ -282,6 +328,87 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 									"annotation_selector": {
 										Type:     schema.TypeString,
 										Optional: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"replacements": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"path": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"source": {
+							Type:     schema.TypeList,
+							MaxItems: 1,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"group": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"version": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"kind": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"name": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"namespace": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"field_path": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"options": {
+										Type:     schema.TypeList,
+										MaxItems: 1,
+										Optional: true,
+										Elem:     getReplacementOptionsSchema(),
+									},
+								},
+							},
+						},
+						"target": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"select": {
+										Type:     schema.TypeList,
+										Optional: true,
+										MaxItems: 1,
+										Elem:     getReplacementSelectorSchema(),
+									},
+									"reject": {
+										Type:     schema.TypeList,
+										Optional: true,
+										Elem:     getReplacementSelectorSchema(),
+									},
+									"field_paths": {
+										Type:     schema.TypeList,
+										Optional: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+									"options": {
+										Type:     schema.TypeList,
+										MaxItems: 1,
+										Optional: true,
+										Elem:     getReplacementOptionsSchema(),
 									},
 								},
 							},
@@ -554,6 +681,22 @@ func convertMapStringInterfaceToMapStringString(in map[string]interface{}) (out 
 	return out
 }
 
+func convertListInterfaceFirstItemToReplacementOptions(in []interface{}) (out *types.FieldOptions) {
+	out = &types.FieldOptions{}
+	if options := convertListInterfaceFirstItemToMapStringInterface(in); options != nil {
+		if delimiter, ok := options["delimiter"]; ok {
+			out.Delimiter = delimiter.(string)
+		}
+		if index, ok := options["index"]; ok {
+			out.Index = index.(int)
+		}
+		if create, ok := options["create"]; ok {
+			out.Create = create.(bool)
+		}
+	}
+	return out
+}
+
 func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 	k.TypeMeta = types.TypeMeta{
 		APIVersion: "kustomize.config.k8s.io/v1beta1",
@@ -713,6 +856,78 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			}
 
 			k.Patches = append(k.Patches, kp)
+		}
+	}
+
+	if d.Get("replacements") != nil {
+		rs := d.Get("replacements").([]interface{})
+		for i := range rs {
+			if rs[i] == nil {
+				continue
+			}
+
+			r := rs[i].(map[string]interface{})
+			kr := types.Replacement{}
+
+			if path := r["path"].(string); path != "" {
+				k.Replacements = append(k.Replacements, types.ReplacementField{Path: path})
+				continue
+			}
+			source := convertListInterfaceFirstItemToMapStringInterface(r["source"].([]interface{}))
+
+			kr.Source = &types.SourceSelector{
+				ResId: resid.ResId{
+					Gvk: resid.Gvk{
+						Group:   source["group"].(string),
+						Version: source["version"].(string),
+						Kind:    source["kind"].(string),
+					},
+					Name:      source["name"].(string),
+					Namespace: source["namespace"].(string),
+				},
+				FieldPath: source["field_path"].(string),
+				Options:   convertListInterfaceFirstItemToReplacementOptions(source["options"].([]interface{})),
+			}
+			targets := r["target"].([]interface{})
+			kr.Targets = make([]*types.TargetSelector, len(targets))
+
+			for i, tgt := range targets {
+				target := tgt.(map[string]interface{})
+				kr.Targets[i] = &types.TargetSelector{
+					Options:    convertListInterfaceFirstItemToReplacementOptions(target["options"].([]interface{})),
+					FieldPaths: convertListInterfaceToListString(target["field_paths"].([]interface{})),
+				}
+				selector := convertMapStringInterfaceToMapStringString(convertListInterfaceFirstItemToMapStringInterface(target["select"].([]interface{})))
+				kr.Targets[i].Select = &types.Selector{
+					ResId: resid.ResId{
+						Gvk: resid.Gvk{
+							Group:   selector["group"],
+							Version: selector["version"],
+							Kind:    selector["kind"],
+						},
+						Name:      selector["name"],
+						Namespace: selector["namespace"],
+					},
+				}
+				rejects := target["reject"].([]interface{})
+				kr.Targets[i].Reject = make([]*types.Selector, len(rejects))
+				for j, rj := range rejects {
+					reject := convertMapStringInterfaceToMapStringString((rj.(map[string]interface{})))
+					kr.Targets[i].Reject[j] = &types.Selector{
+						ResId: resid.ResId{
+							Gvk: resid.Gvk{
+								Group:   reject["group"],
+								Version: reject["version"],
+								Kind:    reject["kind"],
+							},
+							Name:      reject["name"],
+							Namespace: reject["namespace"],
+						},
+					}
+				}
+
+			}
+			k.Replacements = append(k.Replacements, types.ReplacementField{Replacement: kr})
 		}
 	}
 

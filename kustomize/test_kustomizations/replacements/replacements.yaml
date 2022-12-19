@@ -1,0 +1,16 @@
+source:
+  kind: "ConfigMap"
+  name: "replacement-source"
+  fieldPath: "data.replace1"
+targets:
+  - select:
+      kind: Pod
+    reject:
+      - name: replacement-pod-2
+    fieldPaths: 
+      - "spec.containers.[name=modify-me].env.[name=MODIFY_ME].value"
+  - select:
+      kind: ConfigMap
+      name: replacement-target
+    fieldPaths:
+      - data.REPLACE_ME

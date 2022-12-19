@@ -403,6 +403,54 @@ data "kustomization_overlay" "example" {
 }
 ```
 
+### `replacements` - (optional)
+
+Define [Kustomize replacements](https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/replacements/) to modify Kubernetes resources using `replacements` blocks.
+
+#### Child attributes
+
+- `path` - path to replacements file (`source` and `target` are ignored if this is set)
+- `source` - selector for the source of the replacement. As well as the se `field_path` (default `metadata.name`) and `options`
+- `target` one or more replacement target selector/rejectors, specified by: `select`, `reject` (list), `field_paths` (list), `options`. One of `select` or `reject` must be set.
+
+##### Selector attributes
+- `source`, `select` and `reject` have `group`, `version`, `kind`, `name`, `namespace` attributes - one or more of these should be set for `source`, and whichever of `select` or `reject` are used with `target`
+
+##### Options attributes
+When referencing a field path, or field paths, `options` can be used to access a sub-component of the path
+
+- `delimiter` - used to split a field
+- `index` - used to choose which portion of the split to take (default 0)
+- `create` - whether to add a target field if it is missing
+
+#### Example
+
+The following example (from kustomize's docs) replacements the `SECRET_TOKEN` environment variable value
+in the `hello` container with the name of the `my-secret` Secret (which is `my-secret`)
+
+```hcl
+data "kustomization_overlay" "example" {
+  resources = [
+    "path/to/kustomization",
+  ]
+
+  replacements {
+    source {
+      kind = "Secret"
+      name = "my-secret"
+    }
+    target {
+      select {
+        name = "hello"
+        kind = "Job
+      }
+      field_paths = [
+        "spec.template.spec.containers.[name=hello].env.[name=SECRET_TOKEN].value"
+    }
+  }
+}
+```
+
 ### `replicas` - (optional)
 
 Set the [Kustomize replicas](https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/replicas/) to change the number of replicas of a resource.
