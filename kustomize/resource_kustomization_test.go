@@ -474,6 +474,131 @@ resource "kustomization_resource" "scprov" {
 `
 }
 
+func TestAccResourceKustomization_wait(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial config with a svc and deployment in a namespace with wait
+			{
+				Config: testAccResourceKustomizationConfig_wait("test_kustomizations/wait/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckManifestNestedString("kustomization_resource.dep1", "test", "spec", "selector", "matchLabels", "app"),
+					testAccCheckDeploymentReady("kustomization_resource.dep1", "test-wait", "test"),
+				),
+			},
+			//
+			//
+			// Applying modified config updating the deployment annotation with wait
+			{
+				Config: testAccResourceKustomizationConfig_wait("test_kustomizations/wait/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckManifestNestedString("kustomization_resource.dep1", "this will cause a redeploy", "spec", "template", "metadata", "annotations", "new"),
+					testAccCheckDeploymentReady("kustomization_resource.dep1", "test-wait", "test"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_wait(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-wait"]
+}
+resource "kustomization_resource" "dep1" {
+	manifest = data.kustomization_build.test.manifests["apps/Deployment/test-wait/test"]
+	wait     = true
+	timeouts {
+		create = "1m"
+		update = "1m"
+	}
+}
+`
+}
+
+func TestAccResourceKustomization_wait_failure(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial config with a svc and a failing deployment in a namespace with wait
+			{
+				Config: testAccResourceKustomizationConfig_wait_failure("test_kustomizations/wait-fail/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckDeploymentNotReady("kustomization_resource.dep1", "test-wait-fail", "test"),
+				),
+				ExpectError: regexp.MustCompile("timed out creating/updating Deployment test-wait-fail/test:"),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_wait_failure(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-wait-fail"]
+}
+resource "kustomization_resource" "dep1" {
+	manifest = data.kustomization_build.test.manifests["apps/Deployment/test-wait-fail/test"]
+	wait     = true
+	timeouts {
+		create = "1m"
+	}
+}
+`
+}
+
+func TestAccResourceKustomization_nowait(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial config with a svc and deployment in a namespace without wait
+			// so shouldn't exist immediately after creation
+			{
+				Config: testAccResourceKustomizationConfig_nowait("test_kustomizations/nowait/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckManifestNestedString("kustomization_resource.dep1", "test", "spec", "selector", "matchLabels", "app"),
+					testAccCheckDeploymentNotReady("kustomization_resource.dep1", "test-nowait", "test"),
+				),
+			},
+			//
+			//
+			// Applying modified config updating the deployment annotation without wait,
+			// so we don't immediately expect the annotation to be present
+			{
+				Config: testAccResourceKustomizationConfig_nowait("test_kustomizations/nowait/modified"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckManifestNestedString("kustomization_resource.dep1", "this will cause a redeploy", "spec", "template", "metadata", "annotations", "new"),
+					testAccCheckDeploymentNotReady("kustomization_resource.dep1", "test-nowait", "test"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_nowait(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-nowait"]
+}
+
+resource "kustomization_resource" "dep1" {
+	manifest = data.kustomization_build.test.manifests["apps/Deployment/test-nowait/test"]
+}
+`
+}
+
 // Upgrade_API_Version Test
 func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
 
@@ -886,6 +1011,50 @@ func testAccCheckDeploymentPurged(n string) resource.TestCheckFunc {
 			return fmt.Errorf("Resource not purged from K8s api: %s", n)
 		}
 
+		return nil
+	}
+}
+
+func testAccCheckDeploymentReady(n string, namespace string, name string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		u, err := getResourceFromTestState(s, n)
+		if err != nil {
+			return err
+		}
+
+		resp, err := getResourceFromK8sAPI(u)
+		if err != nil {
+			return err
+		}
+		ready, err := deploymentReady(resp)
+		if err != nil {
+			return err
+		}
+		if !ready {
+			return fmt.Errorf("deployment %s in %s not ready", name, namespace)
+		}
+		return nil
+	}
+}
+
+func testAccCheckDeploymentNotReady(n string, namespace string, name string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		u, err := getResourceFromTestState(s, n)
+		if err != nil {
+			return err
+		}
+
+		resp, err := getResourceFromK8sAPI(u)
+		if err != nil {
+			return err
+		}
+		ready, err := deploymentReady(resp)
+		if err != nil {
+			return err
+		}
+		if ready {
+			return fmt.Errorf("deployment %s in %s unexpectedly ready", name, namespace)
+		}
 		return nil
 	}
 }

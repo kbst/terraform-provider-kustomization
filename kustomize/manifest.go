@@ -9,9 +9,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 
+	k8sappsv1 "k8s.io/api/apps/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -20,12 +22,19 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
+var waitRefreshFunctions = map[string]waitRefreshFunction{
+	"apps/Deployment": waitDeploymentRefresh,
+	"apps/Daemonset":  waitDaemonsetRefresh,
+}
+
 type kManifestId struct {
 	group     string
 	kind      string
 	namespace string
 	name      string
 }
+
+type waitRefreshFunction func(km *kManifest) (interface{}, string, error)
 
 func mustParseProviderId(str string) *kManifestId {
 	kr, err := parseProviderId(str)
@@ -351,6 +360,92 @@ func (km *kManifest) waitDeleted(t time.Duration) error {
 		return km.fmtErr(fmt.Errorf("timed out deleting: %s", err))
 	}
 
+	return nil
+}
+
+func daemonsetReady(u *k8sunstructured.Unstructured) (bool, error) {
+	var daemonset k8sappsv1.DaemonSet
+	if err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.UnstructuredContent(), &daemonset); err != nil {
+		return false, err
+	}
+	if daemonset.Generation == daemonset.Status.ObservedGeneration &&
+		daemonset.Status.UpdatedNumberScheduled == daemonset.Status.DesiredNumberScheduled &&
+		daemonset.Status.NumberReady == daemonset.Status.DesiredNumberScheduled &&
+		daemonset.Status.NumberUnavailable == 0 {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func waitDaemonsetRefresh(km *kManifest) (interface{}, string, error) {
+	resp, err := km.apiGet(k8smetav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, "missing", nil
+		}
+		return nil, "error", err
+	}
+	ready, err := daemonsetReady(resp)
+	if err != nil {
+		return nil, "error", err
+	}
+	if ready {
+		return resp, "done", nil
+	}
+	return nil, "in progress", nil
+}
+
+func deploymentReady(u *k8sunstructured.Unstructured) (bool, error) {
+	var deployment k8sappsv1.Deployment
+	if err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.UnstructuredContent(), &deployment); err != nil {
+		return false, err
+	}
+	if deployment.Generation == deployment.Status.ObservedGeneration &&
+		deployment.Status.AvailableReplicas == *deployment.Spec.Replicas &&
+		deployment.Status.AvailableReplicas == deployment.Status.Replicas &&
+		deployment.Status.UnavailableReplicas == 0 {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func waitDeploymentRefresh(km *kManifest) (interface{}, string, error) {
+	resp, err := km.apiGet(k8smetav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, "missing", nil
+		}
+		return nil, "error", err
+	}
+	ready, err := deploymentReady(resp)
+	if err != nil {
+		return nil, "error", err
+	}
+	if ready {
+		return resp, "done", nil
+	}
+	return nil, "in progress", nil
+}
+
+func (km *kManifest) waitCreatedOrUpdated(t time.Duration) error {
+	gvk := km.gvk()
+	if refresh, ok := waitRefreshFunctions[fmt.Sprintf("%s/%s", gvk.Group, gvk.Kind)]; ok {
+		stateConf := &resource.StateChangeConf{
+			Target:  []string{"done"},
+			Pending: []string{"in progress"},
+			Timeout: t,
+			Refresh: func() (interface{}, string, error) {
+				return refresh(km)
+			},
+		}
+
+		_, err := stateConf.WaitForState()
+		if err != nil {
+			return km.fmtErr(fmt.Errorf("timed out creating/updating %s %s/%s: %s", gvk.Kind, km.namespace(), km.name(), err))
+		}
+	}
 	return nil
 }
 
