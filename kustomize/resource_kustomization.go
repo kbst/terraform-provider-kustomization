@@ -35,10 +35,16 @@ func kustomizationResource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"wait": &schema.Schema{
+				Type:     schema.TypeBool,
+				Default:  false,
+				Optional: true,
+			},
 		},
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(5 * time.Minute),
+			Update: schema.DefaultTimeout(5 * time.Minute),
 			Delete: schema.DefaultTimeout(10 * time.Minute),
 		},
 	}
@@ -101,6 +107,12 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	resp, err := km.apiCreate(k8smetav1.CreateOptions{})
 	if err != nil {
 		return logError(err)
+	}
+
+	if d.Get("wait").(bool) {
+		if err = km.waitCreatedOrUpdated(d.Timeout(schema.TimeoutCreate)); err != nil {
+			return logError(err)
+		}
 	}
 
 	id := string(resp.GetUID())
@@ -325,6 +337,12 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	resp, err := kmm.apiPatch(pt, p, k8smetav1.PatchOptions{})
 	if err != nil {
 		return logError(err)
+	}
+
+	if d.Get("wait").(bool) {
+		if err = kmm.waitCreatedOrUpdated(d.Timeout(schema.TimeoutUpdate)); err != nil {
+			return logError(err)
+		}
 	}
 
 	id := string(resp.GetUID())
