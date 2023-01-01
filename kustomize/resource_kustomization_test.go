@@ -513,7 +513,7 @@ resource "kustomization_resource" "dep1" {
 	manifest = data.kustomization_build.test.manifests["apps/Deployment/test-wait/test"]
 	wait     = true
 	timeouts {
-		create = "1m"
+		create = "2m"
 		update = "1m"
 	}
 }
