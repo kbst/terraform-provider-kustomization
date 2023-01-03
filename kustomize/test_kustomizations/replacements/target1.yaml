@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: replacement-pod
+  namespace: test-replacements
+spec:
+  containers:
+    - name: modify-me
+      image: postgres:latest
+      env:
+        - name: MODIFY_ME
+          value: should not matter
+        - name: LEAVE_ME_ALONE
+          value: this should stay untouched
+    - name: leave-me-alone
+      image: nginx:latest
+      env:
+        - name: UNMODIFIED
+          value: still the same

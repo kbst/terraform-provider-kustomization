@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: replacement-source
+  namespace: test-replacements
+data:
+  replace1: this-is-replace1
+  replace2: this-is-replace2
+  REPLACE_ME: this should stay untouched

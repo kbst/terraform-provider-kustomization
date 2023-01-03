@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: replacement-pod-2
+  namespace: test-replacements
+spec:
+  containers:
+    - name: modify-me
+      image: postgres:latest
+      env:
+        - name: MODIFY_ME
+          value: this should be ignored by reject rule
+        - name: LEAVE_ME_ALONE
+          value: this should stay untouched
+    - name: leave-me-alone
+      image: nginx:latest
+      env:
+        - name: UNMODIFIED
+          value: still the same
