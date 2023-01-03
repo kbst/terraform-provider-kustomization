@@ -439,6 +439,7 @@ func kustomizationResourceImport(d *schema.ResourceData, m interface{}) ([]*sche
 	}
 
 	d.Set("manifest", lac)
+	d.Set("wait", d.Get("wait"))
 
 	return []*schema.ResourceData{d}, nil
 }
