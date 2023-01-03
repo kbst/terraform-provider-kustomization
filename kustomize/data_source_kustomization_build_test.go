@@ -30,9 +30,6 @@ func TestAccDataSourceKustomization_basic(t *testing.T) {
 
 func testAccDataSourceKustomizationConfig_basic(path string) string {
 	return fmt.Sprintf(`
-
-provider "kustomization" {}
-
 data "kustomization_build" "test" {
 	path = "%s"
 }
@@ -93,9 +90,6 @@ func TestAccDataSourceKustomization_helmChart(t *testing.T) {
 
 func testAccDataSourceKustomizationConfig_helm(path string) string {
 	return fmt.Sprintf(`
-
-provider "kustomization" {}
-
 data "kustomization_build" "test" {
 	path = "%s"
 
