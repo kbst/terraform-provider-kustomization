@@ -16,8 +16,6 @@ import (
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-//
-//
 // Basic test
 func TestAccResourceKustomization_basic(t *testing.T) {
 
@@ -98,8 +96,6 @@ resource "kustomization_resource" "dep2" {
 `
 }
 
-//
-//
 // Import test invalid id
 func TestAccResourceKustomization_importInvalidID(t *testing.T) {
 
@@ -129,8 +125,6 @@ func TestAccResourceKustomization_importInvalidID(t *testing.T) {
 	})
 }
 
-//
-//
 // Update_Inplace Test
 func TestAccResourceKustomization_updateInplace(t *testing.T) {
 
@@ -206,8 +200,6 @@ resource "kustomization_resource" "dep1" {
 `
 }
 
-//
-//
 // Update_Recreate Test
 func TestAccResourceKustomization_updateRecreate(t *testing.T) {
 
@@ -279,8 +271,6 @@ resource "kustomization_resource" "dep1" {
 `
 }
 
-//
-//
 // Update_Recreate_Name_Or_Namespace_Change Test
 func TestAccResourceKustomization_updateRecreateNameOrNamespaceChange(t *testing.T) {
 
@@ -335,8 +325,6 @@ resource "kustomization_resource" "cm" {
 `
 }
 
-//
-//
 // Update_Recreate_StatefulSet Test
 func TestAccResourceKustomization_updateRecreateStatefulSet(t *testing.T) {
 
@@ -379,8 +367,6 @@ resource "kustomization_resource" "ss" {
 `
 }
 
-//
-//
 // Update_Recreate_RoleRef Test
 func TestAccResourceKustomization_updateRecreateRoleRef(t *testing.T) {
 
@@ -445,8 +431,6 @@ resource "kustomization_resource" "rb" {
 `
 }
 
-//
-//
 // Update_Recreate_StorageClass Test
 func TestAccResourceKustomization_updateRecreateStorageClass(t *testing.T) {
 
@@ -490,8 +474,6 @@ resource "kustomization_resource" "scprov" {
 `
 }
 
-//
-//
 // Upgrade_API_Version Test
 func TestAccResourceKustomization_upgradeAPIVersion(t *testing.T) {
 
@@ -556,8 +538,6 @@ resource "kustomization_resource" "namespacedco" {
 `
 }
 
-//
-//
 // CRD Test
 func TestAccResourceKustomization_crd(t *testing.T) {
 
@@ -649,8 +629,6 @@ resource "kustomization_resource" "ns" {
 `
 }
 
-//
-//
 // Fail namespace not allowed
 func TestAccResourceKustomization_failPlanInvalidNamespaceNotAllowed(t *testing.T) {
 
@@ -676,8 +654,6 @@ resource "kustomization_resource" "crb" {
 `
 }
 
-//
-//
 // Fail namespace required
 func TestAccResourceKustomization_failNamespaceRequired(t *testing.T) {
 
@@ -703,8 +679,6 @@ resource "kustomization_resource" "crb" {
 `
 }
 
-//
-//
 // Fail plan invalid manifest
 func TestAccResourceKustomization_failPlanInvalid(t *testing.T) {
 
@@ -730,8 +704,6 @@ resource "kustomization_resource" "crb" {
 `
 }
 
-//
-//
 // Webhook Test
 func TestAccResourceKustomization_webhook(t *testing.T) {
 
@@ -782,8 +754,6 @@ resource "kustomization_resource" "webhook" {
 `
 }
 
-//
-//
 // SA Token Secret
 func TestAccResourceKustomization_secretSAToken(t *testing.T) {
 
@@ -836,8 +806,6 @@ resource "kustomization_resource" "sa" {
 `
 }
 
-//
-//
 // TransformerConfigs test
 func TestAccResourceKustomization_transformerConfigs(t *testing.T) {
 
