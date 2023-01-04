@@ -432,10 +432,13 @@ func waitDeploymentRefresh(km *kManifest) (interface{}, string, error) {
 func (km *kManifest) waitCreatedOrUpdated(t time.Duration) error {
 	gvk := km.gvk()
 	if refresh, ok := waitRefreshFunctions[fmt.Sprintf("%s/%s", gvk.Group, gvk.Kind)]; ok {
+		delay := 10 * time.Second
 		stateConf := &resource.StateChangeConf{
-			Target:  []string{"done"},
-			Pending: []string{"in progress"},
-			Timeout: t,
+			Target:         []string{"done"},
+			Pending:        []string{"in progress"},
+			Timeout:        t,
+			Delay:          delay,
+			NotFoundChecks: int(t/delay) + 1,
 			Refresh: func() (interface{}, string, error) {
 				return refresh(km)
 			},
