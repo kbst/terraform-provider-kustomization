@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -475,7 +476,7 @@ resource "kustomization_resource" "scprov" {
 }
 
 func TestAccResourceKustomization_wait(t *testing.T) {
-
+	now := time.Now()
 	resource.Test(t, resource.TestCase{
 		//PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
@@ -486,6 +487,7 @@ func TestAccResourceKustomization_wait(t *testing.T) {
 			{
 				Config: testAccResourceKustomizationConfig_wait("test_kustomizations/wait/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
+					assertDurationIsShorterThan(now, 5*time.Minute),
 					testAccCheckManifestNestedString("kustomization_resource.dep1", "test", "spec", "selector", "matchLabels", "app"),
 					testAccCheckDeploymentReady("kustomization_resource.dep1", "test-wait", "test"),
 				),
@@ -496,6 +498,7 @@ func TestAccResourceKustomization_wait(t *testing.T) {
 			{
 				Config: testAccResourceKustomizationConfig_wait("test_kustomizations/wait/modified"),
 				Check: resource.ComposeAggregateTestCheckFunc(
+					assertDurationIsShorterThan(now, 1*time.Minute),
 					testAccCheckManifestNestedString("kustomization_resource.dep1", "this will cause a redeploy", "spec", "template", "metadata", "annotations", "new"),
 					testAccCheckDeploymentReady("kustomization_resource.dep1", "test-wait", "test"),
 				),
@@ -521,6 +524,7 @@ resource "kustomization_resource" "dep1" {
 }
 
 func TestAccResourceKustomization_wait_failure(t *testing.T) {
+	now := time.Now()
 
 	resource.Test(t, resource.TestCase{
 		//PreCheck:  func() { testAccPreCheck(t) },
@@ -533,6 +537,7 @@ func TestAccResourceKustomization_wait_failure(t *testing.T) {
 				Config: testAccResourceKustomizationConfig_wait_failure("test_kustomizations/wait-fail/initial"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckDeploymentNotReady("kustomization_resource.dep1", "test-wait-fail", "test"),
+					assertDurationIsLongerThan(now, 1*time.Minute),
 				),
 				ExpectError: regexp.MustCompile("timed out creating/updating Deployment test-wait-fail/test:"),
 			},
@@ -1283,5 +1288,25 @@ func testAccCheckManifestNestedString(n string, expected string, k ...string) re
 		}
 
 		return nil
+	}
+}
+
+func assertDurationIsLongerThan(start time.Time, duration time.Duration) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		elapsed := time.Since(start)
+		if elapsed > duration {
+			return nil
+		}
+		return fmt.Errorf("elapsed time %s is not longer than %s", elapsed, duration)
+	}
+}
+
+func assertDurationIsShorterThan(start time.Time, duration time.Duration) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		elapsed := time.Since(start)
+		if elapsed < duration {
+			return nil
+		}
+		return fmt.Errorf("elapsed time %s is not shorter than %s", elapsed, duration)
 	}
 }

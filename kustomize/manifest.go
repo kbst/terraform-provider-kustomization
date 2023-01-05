@@ -438,7 +438,7 @@ func (km *kManifest) waitCreatedOrUpdated(t time.Duration) error {
 			Pending:        []string{"in progress"},
 			Timeout:        t,
 			Delay:          delay,
-			NotFoundChecks: int(t/delay) + 1,
+			NotFoundChecks: 2*int(t/delay) + 1,
 			Refresh: func() (interface{}, string, error) {
 				return refresh(km)
 			},
