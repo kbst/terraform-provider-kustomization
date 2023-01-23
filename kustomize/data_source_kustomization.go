@@ -122,24 +122,38 @@ func getKustomizeOptions(d *schema.ResourceData) (opts *krusty.Options) {
 
 	kOptsList := d.Get("kustomize_options").([]interface{})
 
-	if len(kOptsList) == 1 {
-		kOpts := kOptsList[0].(map[string]interface{})
+	if len(kOptsList) == 0 {
+		return opts
+	}
 
-		if kOpts["load_restrictor"] != nil {
-			if kOpts["load_restrictor"].(string) == "none" {
-				opts.LoadRestrictions = types.LoadRestrictionsNone
-			}
+	kOpts := kOptsList[0].(map[string]interface{})
+	getBoolOpt := func(key string) bool {
+		return kOpts[key] != nil && kOpts[key].(bool)
+	}
+
+	enableHelm := getBoolOpt("enable_helm")
+	enableExec := getBoolOpt("enable_exec")
+	enableStar := getBoolOpt("enable_star")
+
+	enableAlphaPlugins := getBoolOpt("enable_alpha_plugins")
+	enableAlphaPlugins = enableAlphaPlugins || enableHelm || enableExec || enableStar
+
+	if enableAlphaPlugins {
+		opts.PluginConfig = types.EnabledPluginConfig(types.BploUseStaticallyLinked)
+	}
+
+	if kOpts["load_restrictor"] != nil {
+		if kOpts["load_restrictor"].(string) == "none" {
+			opts.LoadRestrictions = types.LoadRestrictionsNone
 		}
+	}
 
-		if kOpts["enable_helm"] != nil {
-			if kOpts["enable_helm"].(bool) == true {
-				opts.PluginConfig = types.EnabledPluginConfig(types.BploUseStaticallyLinked)
+	opts.PluginConfig.FnpLoadingOptions.EnableExec = enableExec
+	opts.PluginConfig.FnpLoadingOptions.EnableStar = enableStar
+	opts.PluginConfig.HelmConfig.Enabled = enableHelm
 
-				if kOpts["helm_path"] != nil {
-					opts.PluginConfig.HelmConfig.Command = kOpts["helm_path"].(string)
-				}
-			}
-		}
+	if enableHelm && kOpts["helm_path"] != nil {
+		opts.PluginConfig.HelmConfig.Command = kOpts["helm_path"].(string)
 	}
 
 	return opts

@@ -27,7 +27,19 @@ func dataSourceKustomization() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"enable_alpha_plugins": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"enable_exec": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
 						"enable_helm": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"enable_star": {
 							Type:     schema.TypeBool,
 							Optional: true,
 						},
