@@ -182,12 +182,19 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 	mapper := m.(*Config).Mapper
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
+	// Diff Old/Modified
 	do, dm := d.GetChange("manifest")
+	tm := dm.(string)
+	// dm will always be empty if it's known after apply
+	if tm == "" {
+		return nil
+	}
+	to := do.(string)
 
 	kmm := newKManifest(mapper, client)
-	err := kmm.load([]byte(dm.(string)))
+	err := kmm.load([]byte(tm))
 	if err != nil {
-		return logError(err)
+		return logError(fmt.Errorf("failed to parse new manifest: %s [body_length=%d]", err, len(tm)))
 	}
 	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
 
@@ -211,7 +218,7 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 		return logError(err)
 	}
 
-	if do.(string) == "" {
+	if to == "" {
 		// diffing for create
 		_, err = kmm.apiCreate(k8smetav1.CreateOptions{DryRun: []string{k8smetav1.DryRunAll}})
 		if err != nil {
@@ -237,9 +244,9 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 
 	// diffing for update
 	kmo := newKManifest(mapper, client)
-	err = kmo.load([]byte(do.(string)))
+	err = kmo.load([]byte(to))
 	if err != nil {
-		return logError(err)
+		return logError(fmt.Errorf("failed to parse old manifest: %s [body_length=%d]", err, len(to)))
 	}
 	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
 
