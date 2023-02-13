@@ -320,7 +320,7 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		return logError(err)
 	}
 
-	if !d.HasChange("manifest") {
+	if !d.HasChange("manifest") && !d.HasChange("wait") {
 		return logError(kmm.fmtErr(
 			errors.New("update called without diff"),
 		))

@@ -523,6 +523,64 @@ resource "kustomization_resource" "dep1" {
 `
 }
 
+func TestAccResourceKustomization_add_wait(t *testing.T) {
+	now := time.Now()
+	resource.Test(t, resource.TestCase{
+		//PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			//
+			//
+			// Applying initial config with a svc and deployment in a namespace with no wait
+			{
+				Config: testAccResourceKustomizationConfig_wait_off("test_kustomizations/wait-change/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					assertDurationIsShorterThan(now, 5*time.Minute),
+					testAccCheckManifestNestedString("kustomization_resource.dep1", "test", "spec", "selector", "matchLabels", "app"),
+				),
+			},
+			//
+			//
+			// Applying exactly the same configuration, but with wait turned on
+			{
+				Config: testAccResourceKustomizationConfig_wait_on("test_kustomizations/wait-change/initial"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					assertDurationIsShorterThan(now, 1*time.Minute),
+					testAccCheckManifestNestedString("kustomization_resource.dep1", "test", "spec", "selector", "matchLabels", "app"),
+					testAccCheckDeploymentReady("kustomization_resource.dep1", "test-wait-change", "test"),
+				),
+			},
+		},
+	})
+}
+
+func testAccResourceKustomizationConfig_wait_off(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-wait-change"]
+}
+resource "kustomization_resource" "dep1" {
+	manifest = data.kustomization_build.test.manifests["apps/Deployment/test-wait-change/test"]
+}
+`
+}
+
+func testAccResourceKustomizationConfig_wait_on(path string) string {
+	return testAccDataSourceKustomizationConfig_basic(path) + `
+resource "kustomization_resource" "ns" {
+	manifest = data.kustomization_build.test.manifests["_/Namespace/_/test-wait-change"]
+}
+resource "kustomization_resource" "dep1" {
+	manifest = data.kustomization_build.test.manifests["apps/Deployment/test-wait-change/test"]
+	wait = true
+	timeouts {
+		create = "1m"
+		update = "1m"
+	}
+}
+`
+}
+
 func TestAccResourceKustomization_wait_failure(t *testing.T) {
 	now := time.Now()
 
