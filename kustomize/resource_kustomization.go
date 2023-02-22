@@ -314,23 +314,29 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
 
 	do, dm := d.GetChange("manifest")
-
-	kmo := newKManifest(mapper, client)
-	err := kmo.load([]byte(do.(string)))
-	if err != nil {
-		return logError(err)
-	}
+	tm := dm.(string)
+	to := do.(string)
 
 	kmm := newKManifest(mapper, client)
-	err = kmm.load([]byte(dm.(string)))
+	err := kmm.load([]byte(tm))
 	if err != nil {
-		return logError(err)
+		return logError(fmt.Errorf("failed to parse new manifest: %s [body_length=%d]", err, len(tm)))
 	}
 
 	if !d.HasChange("manifest") && !d.HasChange("wait") {
 		return logError(kmm.fmtErr(
 			errors.New("update called without diff"),
 		))
+	}
+
+	if to == "" {
+		gvk := kmm.gvk()
+		to = fmt.Sprintf(`{"kind":"%s","apiVersion":"%s","metadata":{"name":"%s"}}`, gvk.Kind, gvk.GroupVersion().String(), kmm.name())
+	}
+	kmo := newKManifest(mapper, client)
+	err = kmo.load([]byte(to))
+	if err != nil {
+		return logError(fmt.Errorf("failed to parse old manifest: %s [body_length=%d]", err, len(to)))
 	}
 
 	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
