@@ -76,7 +76,7 @@ func Provider() *schema.Provider {
 				Optional:     true,
 				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "host"},
 				RequiredWith: []string{"host", "cluster_ca_certificate", "token"},
-				Description:  "The hostname (in form of URI) of Kubernetes master.",
+				Description:  "The hostname (in form of URI) of Kubernetes master, if kubeconfig_incluster is set, this parameter along with cluster_ca_certificate and token are ignored.",
 			},
 			"cluster_ca_certificate": {
 				Type:         schema.TypeString,

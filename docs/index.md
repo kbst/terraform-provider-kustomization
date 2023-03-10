@@ -48,7 +48,7 @@ provider "kustomization" {
 
 - `kubeconfig_path` - Path to a kubeconfig file. Can be set using `KUBECONFIG_PATH` environment variable.
 - `kubeconfig_raw` - Raw kubeconfig file. If `kubeconfig_raw` is set, `kubeconfig_path` is ignored.
-- `host` - The hostname (in form of URI) of Kubernetes master.
+- `host` - The hostname (in form of URI) of Kubernetes master, if `kubeconfig_incluster` is set, this parameter along with `cluster_ca_certificate` and `token` are ignored.
 - `cluster_ca_certificate` - PEM-encoded root certificates bundle for TLS authentication.
 - `token` - Token to authentifcate an service account
 - `kubeconfig_incluster` - Set to `true` when running inside a kubernetes cluster.
