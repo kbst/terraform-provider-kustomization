@@ -1,6 +1,7 @@
 package kustomize
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	apimachineryschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
@@ -48,19 +50,19 @@ func Provider() *schema.Provider {
 				Type:         schema.TypeString,
 				Optional:     true,
 				DefaultFunc:  schema.EnvDefaultFunc("KUBECONFIG_PATH", nil),
-				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "host"},
 				Description:  "Path to a kubeconfig file. Can be set using KUBECONFIG_PATH env var",
 			},
 			"kubeconfig_raw": {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "host"},
 				Description:  "Raw kube config. If kubeconfig_raw is set, KUBECONFIG_PATH is ignored.",
 			},
 			"kubeconfig_incluster": {
 				Type:         schema.TypeBool,
 				Optional:     true,
-				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster"},
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "host"},
 				Description:  "Set to true when running inside a kubernetes cluster. If kubeconfig_incluster is set, KUBECONFIG_PATH is ignored.",
 			},
 			"context": {
@@ -68,6 +70,25 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("KUBECONFIG_CONTEXT", nil),
 				Description: "Context to use in kubeconfig with multiple contexts, if not specified the default context is to be used.",
+			},
+			"host": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: []string{"kubeconfig_path", "kubeconfig_raw", "kubeconfig_incluster", "host"},
+				RequiredWith: []string{"host", "cluster_ca_certificate", "token"},
+				Description:  "The hostname (in form of URI) of Kubernetes master.",
+			},
+			"cluster_ca_certificate": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				RequiredWith: []string{"host", "cluster_ca_certificate", "token"},
+				Description:  "PEM-encoded root certificates bundle for TLS authentication.",
+			},
+			"token": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				RequiredWith: []string{"host", "cluster_ca_certificate", "token"},
+				Description:  "Token to authentifcate an service account",
 			},
 			"gzip_last_applied_config": {
 				Type:        schema.TypeBool,
@@ -86,6 +107,9 @@ func Provider() *schema.Provider {
 		path := d.Get("kubeconfig_path").(string)
 		incluster := d.Get("kubeconfig_incluster").(bool)
 		context := d.Get("context").(string)
+		host := d.Get("host").(string)
+		cluster_ca_certificate := d.Get("cluster_ca_certificate").(string)
+		token := d.Get("token").(string)
 
 		if raw != "" {
 			config, err = getClientConfig([]byte(raw), context)
@@ -104,6 +128,23 @@ func Provider() *schema.Provider {
 			if err != nil {
 				return nil, fmt.Errorf("provider kustomization: kubeconfig_path: %s", err)
 			}
+		}
+
+		if host != "" && cluster_ca_certificate != "" && token != "" {
+			loader := &clientcmd.ClientConfigLoadingRules{}
+			overrides := &clientcmd.ConfigOverrides{}
+			phost, _, err := rest.DefaultServerURL(host, "", apimachineryschema.GroupVersion{}, true)
+			if err != nil {
+				return nil, fmt.Errorf("provider kustomization: host: %s", err)
+			}
+			overrides.ClusterInfo.Server = phost.String()
+			overrides.ClusterInfo.CertificateAuthorityData = bytes.NewBufferString(cluster_ca_certificate).Bytes()
+			overrides.AuthInfo.Token = token
+			config, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, overrides).ClientConfig()
+			if err != nil {
+				return nil, fmt.Errorf("provider kustomization: host, cluster_ca_certificate, token: %s", err)
+			}
+
 		}
 
 		if incluster {
