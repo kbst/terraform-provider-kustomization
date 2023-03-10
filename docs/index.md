@@ -35,6 +35,10 @@ provider "kustomization" {
   # kubeconfig_raw = data.template_file.kubeconfig.rendered
   # kubeconfig_raw = yamlencode(local.kubeconfig)
 
+  # host = "https://${module.testing_gke_core.endpoint}"
+  # token = data.google_client_config.default.access_token
+  # cluster_ca_certificate = base64decode(module.testing_gke_core.ca_certificate)
+
   # kubeconfig_incluster = true
 }
 
@@ -44,6 +48,9 @@ provider "kustomization" {
 
 - `kubeconfig_path` - Path to a kubeconfig file. Can be set using `KUBECONFIG_PATH` environment variable.
 - `kubeconfig_raw` - Raw kubeconfig file. If `kubeconfig_raw` is set, `kubeconfig_path` is ignored.
+- `host` - The hostname (in form of URI) of Kubernetes master.
+- `cluster_ca_certificate` - PEM-encoded root certificates bundle for TLS authentication.
+- `token` - Token to authentifcate an service account
 - `kubeconfig_incluster` - Set to `true` when running inside a kubernetes cluster.
 - `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is used.
 - `legacy_id_format` - (Optional) Defaults to `false`. Provided for backward compability, set to `true` to use the legacy ID format. Removed starting `0.9.0`.
