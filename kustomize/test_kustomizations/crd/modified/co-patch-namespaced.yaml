@@ -5,10 +5,3 @@ metadata:
   namespace: test-crd
 spec:
   test-key: test-value-modified
----
-apiVersion: test.example.com/v1alpha1
-kind: Clusteredcrd
-metadata:
-  name: clusteredco
-spec:
-  test-key: test-value-modified

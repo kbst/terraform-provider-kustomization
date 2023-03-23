@@ -2,4 +2,5 @@ resources:
 - ../initial
 
 patches:
-- co-patch.yaml
+- path: co-patch-clustered.yaml
+- path: co-patch-namespaced.yaml
