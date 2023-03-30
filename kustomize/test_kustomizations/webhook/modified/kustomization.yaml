@@ -2,4 +2,4 @@ resources:
 - ../initial
 
 patches:
-- webhook-patch.yaml
+- path: webhook-patch.yaml

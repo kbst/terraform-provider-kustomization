@@ -5,4 +5,4 @@ resources:
 - ../initial
 
 patches:
-- patch_selector.yaml
+- path: patch_selector.yaml
