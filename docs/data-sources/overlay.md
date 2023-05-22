@@ -626,6 +626,7 @@ Must enable helm support via [kustomize_options](#kustomize_options---optional) 
 - `release_name` helm chart release name
 - `namespace` namespace to supply to helm for templating
 - `include_crds` enable to generate Custom Resource Definitions from a supporting helm chart (default: false)
+- `skip_tests` disable generating helm test resources (default: false)
 - `values_file` specify a file with helm values to use for templating. Not specifying this uses the in-chart values file, if one exists.
 - `values_inline` specify helm values inline from terraform, as a string
 - `values_merge` merge strategy if both `values_file` and `values_inline` are specified. Can be one of `override`, `replace`, `merge`. (default: `override`)
@@ -640,6 +641,7 @@ data "kustomization_overlay" "minecraft" {
     repo = "https://itzg.github.io/minecraft-server-charts"
     release_name = "moria"
     include_crds = false
+    skip_tests = false
     values_inline = <<VALUES
       minecraftServer:
         eula: true

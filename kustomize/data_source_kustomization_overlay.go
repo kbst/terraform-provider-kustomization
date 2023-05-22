@@ -485,6 +485,10 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 						},
+						"skip_tests": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
 						"values_merge": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -1005,6 +1009,7 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			hca.ValuesFile = hc["values_file"].(string)
 			hca.ValuesMerge = hc["values_merge"].(string)
 			hca.IncludeCRDs = hc["include_crds"].(bool)
+			hca.SkipTests = hc["skip_tests"].(bool)
 
 			hc_vi := make(map[string]interface{})
 			if err := yaml.Unmarshal([]byte(hc["values_inline"].(string)), &hc_vi); err != nil {
