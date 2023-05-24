@@ -1202,6 +1202,7 @@ data "kustomization_overlay" "test" {
 		name = "test-basic"
 		version = "0.0.1"
 		namespace = "not-used"
+		skip_tests = true
 	}
 
 	namespace = "test-basic"
@@ -1253,6 +1254,7 @@ data "kustomization_overlay" "test" {
 		name = "test-releasename"
 		version = "0.0.1"
 		release_name = "my-release"
+		skip_tests = true
 	}
 
 	kustomize_options {
@@ -1305,6 +1307,7 @@ data "kustomization_overlay" "test" {
 		name = "test-basic"
 		version = "0.0.1"
 		values_file = "./test_kustomizations/helm/initial/alt-values.yaml"
+		skip_tests = true
 	}
 
 	kustomize_options {
@@ -1365,6 +1368,7 @@ data "kustomization_overlay" "test" {
       nginx:
         port: 443
     VALUES
+	skip_tests = true
 	}
 
 	kustomize_options {
@@ -1433,6 +1437,7 @@ data "kustomization_overlay" "test" {
         port: 443
     VALUES
 		values_merge = "override"
+		skip_tests = true
 	}
 
 	kustomize_options {
@@ -1486,6 +1491,7 @@ data "kustomization_overlay" "test" {
 		name = "test-basic"
 		version = "0.0.1"
 		include_crds = true
+		skip_tests = true
 	}
 
 	kustomize_options {
@@ -1504,6 +1510,63 @@ output "deployment" {
 
 output "crd" {
 	value = data.kustomization_overlay.test.manifests["apiextensions.k8s.io/CustomResourceDefinition/_/crontabs.stable.example.com"]
+}
+`
+}
+
+// Test helm_charts skip_tests
+// this uses the same chart as TestDataSourceKustomizationOverlay_helm_charts_attr
+// only setting the skip_tests attribute to false as well
+func TestDataSourceKustomizationOverlay_helm_charts_skipTestsFalse(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_skipTestsFalse(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("test_pod", "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{\"helm.sh/hook\":\"test\"},\"name\":\"nginx-test-connection\"},\"spec\":{\"containers\":[{\"args\":[\"nginx:80/testpath\"],\"command\":[\"wget\"],\"image\":\"busybox\",\"name\":\"wget\"}],\"restartPolicy\":\"Never\"}}"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "4"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids_prio.#", "3"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "4"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_skipTestsFalse() string {
+	return `
+data "kustomization_overlay" "test" {
+	helm_globals {
+		chart_home = "./test_kustomizations/helm/initial/charts/"
+	}
+
+	helm_charts {
+		name = "test-basic"
+		version = "0.0.1"
+		skip_tests = false
+	}
+
+	kustomize_options {
+		enable_helm = true
+		helm_path = "helm"
+	}
+}
+
+output "service" {
+	value = data.kustomization_overlay.test.manifests["_/Service/_/nginx"]
+}
+
+output "deployment" {
+	value = data.kustomization_overlay.test.manifests["apps/Deployment/_/nginx"]
+}
+
+output "test_pod" {
+	value = data.kustomization_overlay.test.manifests["_/Pod/_/nginx-test-connection"]
 }
 `
 }
@@ -1542,11 +1605,13 @@ data "kustomization_overlay" "test" {
 		name = "test-releasename"
 		version = "0.0.1"
 		release_name = "my-release"
+		skip_tests = true
 	}
 
 	helm_charts {
 		name = "test-basic"
 		version = "0.0.1"
+		skip_tests = true
 	}
 
 	kustomize_options {
