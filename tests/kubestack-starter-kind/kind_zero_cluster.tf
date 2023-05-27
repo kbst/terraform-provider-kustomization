@@ -1,5 +1,5 @@
 module "kind_zero" {
-  source = "github.com/kbst/terraform-kubestack//kind/cluster?ref=v0.16.2-beta.0"
+  source = "github.com/kbst/terraform-kubestack//kind/cluster?ref=v0.18.2-beta.0"
 
   configuration = {
     # Settings for Apps-cluster
