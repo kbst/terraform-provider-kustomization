@@ -442,7 +442,7 @@ data "kustomization_overlay" "example" {
     target {
       select {
         name = "hello"
-        kind = "Job
+        kind = "Job"
       }
       field_paths = [
         "spec.template.spec.containers.[name=hello].env.[name=SECRET_TOKEN].value"
