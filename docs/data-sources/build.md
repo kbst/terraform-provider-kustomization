@@ -9,7 +9,7 @@ Data source to `kustomize build` a Kustomization and return a set of `ids` and h
 ```hcl
 data "kustomization_build" "test" {
   path = "test_kustomizations/basic/initial"
-  kustomize_options = {
+  kustomize_options {
     load_restrictor = "none"
     enable_helm = true
     helm_path = "/path/to/helm"
