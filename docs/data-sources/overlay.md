@@ -630,6 +630,8 @@ Must enable helm support via [kustomize_options](#kustomize_options---optional) 
 - `values_file` specify a file with helm values to use for templating. Not specifying this uses the in-chart values file, if one exists.
 - `values_inline` specify helm values inline from terraform, as a string
 - `values_merge` merge strategy if both `values_file` and `values_inline` are specified. Can be one of `override`, `replace`, `merge`. (default: `override`)
+- `api_versions` List of Kubernetes api versions used for Capabilities.APIVersions.
+- `kube_version` Allows specifying a custom kubernetes version to use when templating.
 
 #### Example
 
@@ -642,6 +644,8 @@ data "kustomization_overlay" "minecraft" {
     release_name = "moria"
     include_crds = false
     skip_tests = false
+    kube_version = "1.29.0"
+    api_versions = ["monitoring.coreos.com/v1"]
     values_inline = <<VALUES
       minecraftServer:
         eula: true

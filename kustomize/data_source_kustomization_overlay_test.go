@@ -2,6 +2,7 @@ package kustomize
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -1185,6 +1186,9 @@ func TestDataSourceKustomizationOverlay_helm_charts_attr(t *testing.T) {
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "3"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids_prio.#", "3"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "3"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "helm_charts.0.kube_version", "1.29.0"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "helm_charts.0.api_versions.#", "1"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "helm_charts.0.api_versions.0", "monitoring.coreos.com/v1"),
 				),
 			},
 		},
@@ -1203,6 +1207,8 @@ data "kustomization_overlay" "test" {
 		version = "0.0.1"
 		namespace = "not-used"
 		skip_tests = true
+		kube_version = "1.29.0"
+		api_versions = ["monitoring.coreos.com/v1"]
 	}
 
 	namespace = "test-basic"
@@ -1680,4 +1686,105 @@ output "rolebinding" {
 	value = data.kustomization_overlay.test.manifests["rbac.authorization.k8s.io/RoleBinding/default/my-release-kube-prometheus-alertmanager"]
 }
 `
+}
+
+// Test the capabilites helm chart without capabilities set
+func TestDataSourceKustomizationOverlay_helm_charts_capabilities_not_set(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_capabilities_not_set(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// There should be only the default configmap in the manifests
+					resource.TestCheckOutput("default_configmap", "{\"apiVersion\":\"v1\",\"data\":{\"should\":\"always exist\"},\"kind\":\"ConfigMap\",\"metadata\":{\"labels\":{\"app\":\"my-release\",\"name\":\"my-release\"},\"name\":\"default-configmap\"}}"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "1"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_capabilities_not_set() string {
+	return `
+	data "kustomization_overlay" "test" {
+		helm_globals {
+			chart_home = "./test_kustomizations/helm/initial/charts/"
+		}
+	
+		helm_charts {
+			name = "test-capabilities"
+			version = "0.0.1"
+			release_name = "my-release"
+		}
+	
+		kustomize_options {
+			enable_helm = true
+			helm_path = "helm"
+		}
+	}
+	
+	output "default_configmap" {
+		value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/default-configmap"]
+	}`
+}
+
+// Test the capabilites helm chart without capabilities set
+func TestDataSourceKustomizationOverlay_helm_charts_capabilities_set(t *testing.T) {
+
+	foo := os.Environ()
+	_ = foo
+
+	resource.Test(t, resource.TestCase{
+		IsUnitTest: true,
+		Providers:  testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testDataSourceKustomizationOverlayConfig_helm_charts_capabilities_set(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// There should be only the default configmap in the manifests
+					resource.TestCheckOutput("default_configmap", "{\"apiVersion\":\"v1\",\"data\":{\"should\":\"always exist\"},\"kind\":\"ConfigMap\",\"metadata\":{\"labels\":{\"app\":\"my-release\",\"name\":\"my-release\"},\"name\":\"default-configmap\"}}"),
+					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "3"),
+
+					// Check conditional configmaps exists
+					resource.TestCheckOutput("kubeversion_configmap", "{\"apiVersion\":\"v1\",\"data\":{\"should\":\"only when kubeversion is equals v1.42.0\"},\"kind\":\"ConfigMap\",\"metadata\":{\"labels\":{\"app\":\"my-release\",\"name\":\"my-release\"},\"name\":\"kubeversion-configmap\"}}"),
+					resource.TestCheckOutput("apiversions_configmap", "{\"apiVersion\":\"v1\",\"data\":{\"should\":\"only when a the fake apiVersion is set\"},\"kind\":\"ConfigMap\",\"metadata\":{\"labels\":{\"app\":\"my-release\",\"name\":\"my-release\"},\"name\":\"apiversions-configmap\"}}"),
+				),
+			},
+		},
+	})
+}
+
+func testDataSourceKustomizationOverlayConfig_helm_charts_capabilities_set() string {
+	return `
+	data "kustomization_overlay" "test" {
+		helm_globals {
+			chart_home = "./test_kustomizations/helm/initial/charts/"
+		}
+	
+		helm_charts {
+			name = "test-capabilities"
+			version = "0.0.1"
+			release_name = "my-release"
+			kube_version = "v1.42.0"
+			api_versions = ["foo.bar/v1"]
+		}
+	
+		kustomize_options {
+			enable_helm = true
+			helm_path = "helm"
+		}
+	}
+	
+	output "default_configmap" {
+		value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/default-configmap"]
+	}
+	output "kubeversion_configmap" {
+		value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/kubeversion-configmap"]
+	}
+	output "apiversions_configmap" {
+		value = data.kustomization_overlay.test.manifests["_/ConfigMap/_/apiversions-configmap"]
+	}`
 }
