@@ -1,0 +1,4 @@
+apiVersion: v2
+description: A Simple Helm chart to test capabilitie set by the user
+name: test-capabilities
+version: 0.0.1

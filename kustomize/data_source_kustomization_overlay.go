@@ -505,6 +505,15 @@ func dataSourceKustomizationOverlay() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"api_versions": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"kube_version": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 			},
@@ -1010,6 +1019,8 @@ func getKustomization(d *schema.ResourceData) (k types.Kustomization) {
 			hca.ValuesMerge = hc["values_merge"].(string)
 			hca.IncludeCRDs = hc["include_crds"].(bool)
 			hca.SkipTests = hc["skip_tests"].(bool)
+			hca.KubeVersion = hc["kube_version"].(string)
+			hca.ApiVersions = convertListInterfaceToListString(hc["api_versions"].([]interface{}))
 
 			hc_vi := make(map[string]interface{})
 			if err := yaml.Unmarshal([]byte(hc["values_inline"].(string)), &hc_vi); err != nil {
