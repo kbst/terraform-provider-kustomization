@@ -24,7 +24,7 @@ import (
 
 var waitRefreshFunctions = map[string]waitRefreshFunction{
 	"apps/Deployment":  waitDeploymentRefresh,
-	"apps/Daemonset":   waitDaemonsetRefresh,
+	"apps/DaemonSet":   waitDaemonsetRefresh,
 	"apps/StatefulSet": waitStatefulSetRefresh,
 }
 
