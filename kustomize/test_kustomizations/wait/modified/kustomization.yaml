@@ -13,3 +13,19 @@ patches:
         path: /spec/template/metadata/annotations
         value: 
           new: this will cause a redeploy
+  - target:
+      kind: StatefulSet
+      name: test
+    patch: |
+      - op: add
+        path: /spec/template/metadata/annotations
+        value:
+          new: this will cause a redeploy
+  - target:
+      kind: DaemonSet
+      name: test
+    patch: |
+      - op: add
+        path: /spec/template/metadata/annotations
+        value:
+          new: this will cause a redeploy
