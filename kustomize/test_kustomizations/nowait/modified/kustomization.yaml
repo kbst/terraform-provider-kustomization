@@ -13,3 +13,11 @@ patches:
         path: /spec/template/metadata/annotations
         value: 
           new: this will cause a redeploy
+  - target:
+      kind: StatefulSet
+      name: test-statefulset
+    patch: |
+      - op: add
+        path: /spec/template/metadata/annotations
+        value:
+          new: this will cause statefulset to redeploy
