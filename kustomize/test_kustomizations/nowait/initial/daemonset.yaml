@@ -1,11 +1,10 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: DaemonSet
 metadata:
   labels:
     app: test
   name: test
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: test

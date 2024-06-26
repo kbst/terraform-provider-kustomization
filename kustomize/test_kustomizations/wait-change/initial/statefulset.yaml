@@ -2,17 +2,17 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   labels:
-    app: test-statefulset
-  name: test-statefulset
+    app: test
+  name: test
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: test-statefulset
+      app: test
   template:
     metadata:
       labels:
-        app: test-statefulset
+        app: test
     spec:
       containers:
       - image: nginx
