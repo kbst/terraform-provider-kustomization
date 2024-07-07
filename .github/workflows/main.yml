@@ -70,14 +70,14 @@ jobs:
       uses: kbst/goreleaser-action@v4
       with:
         version: latest
-        args: build --config .goreleaser-build.yml --rm-dist
+        args: build --config .goreleaser-build.yml --clean
 
     - name: Run goreleaser build --snapshot
       if: startsWith(github.ref, 'refs/tags/v') == false
       uses: kbst/goreleaser-action@v4
       with:
         version: latest
-        args: build --config .goreleaser-build.yml --rm-dist --snapshot
+        args: build --config .goreleaser-build.yml --clean --snapshot
 
     - name: 'Prepare terraform-plugins'
       run: |
