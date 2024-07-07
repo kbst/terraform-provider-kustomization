@@ -68,7 +68,7 @@ resource "kustomization_resource" "p0" {
 
 # then loop through resources in ids_prio[1]
 # and set an explicit depends_on on kustomization_resource.p0
-# wait 2 minutes for any deployment or daemonset to become ready
+# wait 2 minutes for any deployment, statefulset or daemonset to become ready
 resource "kustomization_resource" "p1" {
   for_each = data.kustomization_build.test.ids_prio[1]
 
@@ -105,5 +105,5 @@ resource "kustomization_resource" "p2" {
 ## Argument Reference
 
 - `manifest` - (Required) JSON encoded Kubernetes resource manifest.
-- `wait` - Whether to wait for pods to become ready (default false). Currently only has an effect for Deployments and DaemonSets.
+- `wait` - Whether to wait for pods to become ready (default false). Currently only has an effect for Deployments, StatefulSets and DaemonSets.
 - 'timeouts' - (Optional) Overwrite `create`, `update` or `delete` timeout defaults. Defaults are 5 minutes for `create` and `update` and 10 minutes for `delete`.

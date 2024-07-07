@@ -23,8 +23,9 @@ import (
 )
 
 var waitRefreshFunctions = map[string]waitRefreshFunction{
-	"apps/Deployment": waitDeploymentRefresh,
-	"apps/Daemonset":  waitDaemonsetRefresh,
+	"apps/Deployment":  waitDeploymentRefresh,
+	"apps/DaemonSet":   waitDaemonsetRefresh,
+	"apps/StatefulSet": waitStatefulSetRefresh,
 }
 
 type kManifestId struct {
@@ -420,6 +421,38 @@ func waitDeploymentRefresh(km *kManifest) (interface{}, string, error) {
 		return nil, "error", err
 	}
 	ready, err := deploymentReady(resp)
+	if err != nil {
+		return nil, "error", err
+	}
+	if ready {
+		return resp, "done", nil
+	}
+	return nil, "in progress", nil
+}
+
+func statefulSetReady(u *k8sunstructured.Unstructured) (bool, error) {
+	var statefulSet k8sappsv1.StatefulSet
+	if err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.UnstructuredContent(), &statefulSet); err != nil {
+		return false, err
+	}
+	if statefulSet.Generation == statefulSet.Status.ObservedGeneration &&
+		statefulSet.Status.AvailableReplicas == *statefulSet.Spec.Replicas &&
+		statefulSet.Status.AvailableReplicas == statefulSet.Status.Replicas {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func waitStatefulSetRefresh(km *kManifest) (interface{}, string, error) {
+	resp, err := km.apiGet(k8smetav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, "missing", nil
+		}
+		return nil, "error", err
+	}
+	ready, err := statefulSetReady(resp)
 	if err != nil {
 		return nil, "error", err
 	}

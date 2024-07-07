@@ -5,6 +5,8 @@ namespace: test-wait-fail
 
 resources:
 - namespace.yaml
+- daemonset.yaml
+- statefulset.yaml
 - ../../_example_app
 
 images:
