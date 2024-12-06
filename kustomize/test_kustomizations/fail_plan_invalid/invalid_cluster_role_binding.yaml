@@ -7,8 +7,7 @@ subjects:
   name: admins
   apiGroup: rbac.authorization.k8s.io
 roleRef:
-  # invalid roleRef to fail test
+  # invalid roleRef to fail test - roleRef should reference a ClusterRole, not a Role
   kind: Role
   name: secret-reader
-  namespace: default
   apiGroup: rbac.authorization.k8s.io
