@@ -13,7 +13,7 @@ jobs:
     strategy:
         fail-fast: false
         matrix:
-          runner: ["ubuntu-latest", "windows-latest", "macos-latest"]
+          runner: ["ubuntu-24.04", "windows-latest", "macos-latest"]
 
     steps:
     - name: Checkout using linefeed for tests
@@ -54,7 +54,7 @@ jobs:
         go test -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=ignore" -v ./kustomize
 
   compile_provider:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - name: 'Checkout'
@@ -91,7 +91,7 @@ jobs:
         path: dist/terraform.d/plugins
 
   int_test_kubeconfig_path:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [compile_provider]
 
     env:
@@ -129,7 +129,7 @@ jobs:
       run: terraform apply --auto-approve
 
   int_test_kubeconfig_raw:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [compile_provider]
 
     steps:
@@ -172,7 +172,7 @@ jobs:
       run: terraform apply --auto-approve
 
   int_test_in_cluster:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [compile_provider]
 
     steps:
@@ -222,7 +222,7 @@ jobs:
       run: kubectl exec -it terraform -- terraform apply --auto-approve
 
   int_test_state_import:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [compile_provider]
 
     env:
@@ -277,7 +277,7 @@ jobs:
       run: terraform apply --auto-approve
   
   int_test_state_migration:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [compile_provider]
 
     env:
@@ -329,7 +329,7 @@ jobs:
       run: terraform apply --auto-approve
 
   int_test_kubestack_kind:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [compile_provider]
 
     steps:
@@ -396,7 +396,7 @@ jobs:
           terraform destroy --auto-approve
 
   goreleaser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - tf_tests
       - int_test_kubeconfig_path
