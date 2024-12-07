@@ -133,6 +133,11 @@ output "check" {
 
 // Test common_labels attr
 func TestDataSourceKustomizationOverlay_commonLabels(t *testing.T) {
+	// Unfortunately, the controversial commonLabels deprecation
+	// https://github.com/kubernetes-sigs/kustomize/issues/5436#issuecomment-2442056536
+	// produces those annoying deprecation warnings. Keep the test until Kustomize
+	// provides a well-documented alternative that everybody can switch to.
+	// Then, after some time, we can delete the test for commonLabels.
 
 	resource.Test(t, resource.TestCase{
 		IsUnitTest: true,
