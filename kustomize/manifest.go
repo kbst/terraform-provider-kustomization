@@ -13,11 +13,11 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	k8sunstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	k8smetav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	k8sdynamic "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/restmapper"
 )
@@ -85,16 +85,18 @@ func emptyToUnderscore(value string) string {
 }
 
 type kManifest struct {
-	resource *k8sunstructured.Unstructured
-	mapper   *restmapper.DeferredDiscoveryRESTMapper
-	client   k8sdynamic.Interface
-	json     []byte
+	resource  *k8sunstructured.Unstructured
+	mapper    *restmapper.DeferredDiscoveryRESTMapper
+	extractor k8smetav1ac.UnstructuredExtractor
+	client    k8sdynamic.Interface
+	json      []byte
 }
 
-func newKManifest(mapper *restmapper.DeferredDiscoveryRESTMapper, client k8sdynamic.Interface) *kManifest {
+func newKManifest(m *restmapper.DeferredDiscoveryRESTMapper, c k8sdynamic.Interface, e k8smetav1ac.UnstructuredExtractor) *kManifest {
 	return &kManifest{
-		mapper: mapper,
-		client: client,
+		mapper:    m,
+		client:    c,
+		extractor: e,
 	}
 }
 
@@ -204,6 +206,15 @@ func (km *kManifest) apiDelete(opts k8smetav1.DeleteOptions) (err error) {
 	return api.Delete(context.TODO(), km.name(), opts)
 }
 
+func (km *kManifest) apiApply(opts k8smetav1.ApplyOptions) (resp *k8sunstructured.Unstructured, err error) {
+	api, err := km.api()
+	if err != nil {
+		return resp, km.fmtErr(fmt.Errorf("create failed: %s", err))
+	}
+
+	return api.Apply(context.TODO(), km.name(), km.resource, opts)
+}
+
 func (km *kManifest) apiPreparePatch(kmo *kManifest, currAllowNotFound bool) (pt k8stypes.PatchType, p []byte, err error) {
 	original := kmo.json
 	modified := km.json
@@ -253,7 +264,7 @@ func (km *kManifest) getNamespaceManifest() (kns *kManifest, namespaced bool) {
 		return kns, false
 	}
 
-	kns = newKManifest(km.mapper, km.client)
+	kns = newKManifest(km.mapper, km.client, km.extractor)
 
 	kns.resource = kns.resource.NewEmptyInstance().(*k8sunstructured.Unstructured)
 
