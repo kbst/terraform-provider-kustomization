@@ -13,9 +13,12 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
+
+const fieldManager string = "terraform-provider-kustomization"
 
 func kustomizationResource() *schema.Resource {
 	return &schema.Resource{
@@ -53,7 +56,12 @@ func kustomizationResource() *schema.Resource {
 func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	mapper := m.(*Config).Mapper
 	client := m.(*Config).Client
-	km := newKManifest(mapper, client)
+	extractor := m.(*Config).Extractor
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+	serverSideApply := m.(*Config).ServerSideApply
+	serverSideApplyForce := m.(*Config).ServerSideApplyForce
+
+	km := newKManifest(mapper, client, extractor)
 
 	err := km.load([]byte(d.Get("manifest").(string)))
 	if err != nil {
@@ -101,12 +109,28 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 		}
 	}
 
-	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
-	setLastAppliedConfig(km, gzipLastAppliedConfig)
+	var resp *unstructured.Unstructured
 
-	resp, err := km.apiCreate(k8smetav1.CreateOptions{})
-	if err != nil {
-		return logError(err)
+	if serverSideApply {
+		resp, err = km.apiApply(k8smetav1.ApplyOptions{
+			FieldManager: fieldManager,
+			Force:        serverSideApplyForce,
+		})
+		if err != nil {
+			return logError(fmt.Errorf("server-side apply error: %s", err))
+		}
+	}
+
+	// if server-side apply disabled or failed, fallback to create
+	if !serverSideApply {
+		setLastAppliedConfig(km, gzipLastAppliedConfig)
+
+		resp, err = km.apiCreate(k8smetav1.CreateOptions{
+			FieldManager: fieldManager,
+		})
+		if err != nil {
+			return logError(fmt.Errorf("create failed: %s", err))
+		}
 	}
 
 	if d.Get("wait").(bool) {
@@ -118,13 +142,19 @@ func kustomizationResourceCreate(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp, gzipLastAppliedConfig))
+	lac := extractLastAppliedConfig(resp, extractor, gzipLastAppliedConfig)
+	d.Set("manifest", lac)
 
-	return kustomizationResourceRead(d, m)
+	return nil
 }
 
 func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
-	km := newKManifest(m.(*Config).Mapper, m.(*Config).Client)
+	client := m.(*Config).Client
+	mapper := m.(*Config).Mapper
+	extractor := m.(*Config).Extractor
+	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+
+	km := newKManifest(mapper, client, extractor)
 
 	err := km.load([]byte(d.Get("manifest").(string)))
 	if err != nil {
@@ -139,13 +169,18 @@ func kustomizationResourceRead(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp, m.(*Config).GzipLastAppliedConfig))
+	lac := extractLastAppliedConfig(resp, extractor, gzipLastAppliedConfig)
+	d.Set("manifest", lac)
 
 	return nil
 }
 
 func kustomizationResourceExists(d *schema.ResourceData, m interface{}) (bool, error) {
-	km := newKManifest(m.(*Config).Mapper, m.(*Config).Client)
+	client := m.(*Config).Client
+	mapper := m.(*Config).Mapper
+	extractor := m.(*Config).Extractor
+
+	km := newKManifest(mapper, client, extractor)
 
 	err := km.load([]byte(d.Get("manifest").(string)))
 	if err != nil {
@@ -180,11 +215,14 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+	extractor := m.(*Config).Extractor
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+	serverSideApply := m.(*Config).ServerSideApply
+	serverSideApplyForce := m.(*Config).ServerSideApplyForce
 
 	do, dm := d.GetChange("manifest")
 
-	kmm := newKManifest(mapper, client)
+	kmm := newKManifest(mapper, client, extractor)
 	err := kmm.load([]byte(dm.(string)))
 	if err != nil {
 		return logError(err)
@@ -212,8 +250,10 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 	}
 
 	if do.(string) == "" {
-		// diffing for create
-		_, err = kmm.apiCreate(k8smetav1.CreateOptions{DryRun: []string{k8smetav1.DryRunAll}})
+		_, err = kmm.apiCreate(k8smetav1.CreateOptions{
+			FieldManager: fieldManager,
+		})
+
 		if err != nil {
 			if k8serrors.IsAlreadyExists(err) {
 				// this is an edge case during tests
@@ -235,8 +275,7 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 		return nil
 	}
 
-	// diffing for update
-	kmo := newKManifest(mapper, client)
+	kmo := newKManifest(mapper, client, extractor)
 	err = kmo.load([]byte(do.(string)))
 	if err != nil {
 		return logError(err)
@@ -249,14 +288,34 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 		return nil
 	}
 
-	pt, p, err := kmm.apiPreparePatch(kmo, true)
-	if err != nil {
-		return logError(err)
+	if serverSideApply {
+		_, err = kmm.apiApply(k8smetav1.ApplyOptions{
+			DryRun:       []string{k8smetav1.DryRunAll},
+			FieldManager: fieldManager,
+			Force:        serverSideApplyForce,
+		})
 	}
 
-	dryRunPatch := k8smetav1.PatchOptions{DryRun: []string{k8smetav1.DryRunAll}}
+	// if server-side apply disabled fallback to patch
+	if !serverSideApply {
+		kmo := newKManifest(mapper, client, extractor)
+		err = kmo.load([]byte(do.(string)))
+		if err != nil {
+			return logError(err)
+		}
+		setLastAppliedConfig(kmo, gzipLastAppliedConfig)
 
-	_, err = kmm.apiPatch(pt, p, dryRunPatch)
+		pt, p, pErr := kmm.apiPreparePatch(kmo, true)
+		if pErr != nil {
+			return logError(pErr)
+		}
+
+		_, err = kmm.apiPatch(pt, p, k8smetav1.PatchOptions{
+			DryRun:       []string{k8smetav1.DryRunAll},
+			FieldManager: fieldManager,
+		})
+	}
+
 	if err != nil {
 		// Handle specific invalid errors
 		if k8serrors.IsInvalid(err) {
@@ -304,21 +363,19 @@ func kustomizationResourceDiff(ctx context.Context, d *schema.ResourceDiff, m in
 func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+	extractor := m.(*Config).Extractor
 	gzipLastAppliedConfig := m.(*Config).GzipLastAppliedConfig
+	serverSideApply := m.(*Config).ServerSideApply
+	serverSideApplyForce := m.(*Config).ServerSideApplyForce
 
 	do, dm := d.GetChange("manifest")
 
-	kmo := newKManifest(mapper, client)
-	err := kmo.load([]byte(do.(string)))
+	kmm := newKManifest(mapper, client, extractor)
+	err := kmm.load([]byte(dm.(string)))
 	if err != nil {
 		return logError(err)
 	}
-
-	kmm := newKManifest(mapper, client)
-	err = kmm.load([]byte(dm.(string)))
-	if err != nil {
-		return logError(err)
-	}
+	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
 
 	if !d.HasChange("manifest") && !d.HasChange("wait") {
 		return logError(kmm.fmtErr(
@@ -326,17 +383,37 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 		))
 	}
 
-	setLastAppliedConfig(kmo, gzipLastAppliedConfig)
-	setLastAppliedConfig(kmm, gzipLastAppliedConfig)
-
-	pt, p, err := kmm.apiPreparePatch(kmo, false)
-	if err != nil {
-		return logError(err)
+	var resp *unstructured.Unstructured
+	if serverSideApply {
+		resp, err = kmm.apiApply(k8smetav1.ApplyOptions{
+			FieldManager: fieldManager,
+			Force:        serverSideApplyForce,
+		})
+		if err != nil {
+			logError(fmt.Errorf("server-side apply error: %s", err))
+		}
 	}
 
-	resp, err := kmm.apiPatch(pt, p, k8smetav1.PatchOptions{})
-	if err != nil {
-		return logError(err)
+	// if server-side apply disabled fallback to patch
+	if !serverSideApply {
+		kmo := newKManifest(mapper, client, extractor)
+		err = kmo.load([]byte(do.(string)))
+		if err != nil {
+			return logError(err)
+		}
+		setLastAppliedConfig(kmo, gzipLastAppliedConfig)
+
+		pt, p, err := kmm.apiPreparePatch(kmo, true)
+		if err != nil {
+			return logError(err)
+		}
+
+		resp, err = kmm.apiPatch(pt, p, k8smetav1.PatchOptions{
+			FieldManager: fieldManager,
+		})
+		if err != nil {
+			return logError(err)
+		}
 	}
 
 	if d.Get("wait").(bool) {
@@ -348,16 +425,18 @@ func kustomizationResourceUpdate(d *schema.ResourceData, m interface{}) error {
 	id := string(resp.GetUID())
 	d.SetId(id)
 
-	d.Set("manifest", getLastAppliedConfig(resp, gzipLastAppliedConfig))
+	lac := extractLastAppliedConfig(resp, extractor, gzipLastAppliedConfig)
+	d.Set("manifest", lac)
 
-	return kustomizationResourceRead(d, m)
+	return nil
 }
 
 func kustomizationResourceDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(*Config).Client
 	mapper := m.(*Config).Mapper
+	extractor := m.(*Config).Extractor
 
-	km := newKManifest(mapper, client)
+	km := newKManifest(mapper, client, extractor)
 
 	err := parseResourceData(km, d.Get("manifest").(string))
 	if err != nil {

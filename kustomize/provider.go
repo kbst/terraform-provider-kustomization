@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
+	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -22,8 +23,11 @@ import (
 type Config struct {
 	Client                dynamic.Interface
 	Mapper                *restmapper.DeferredDiscoveryRESTMapper
+	Extractor             metav1ac.UnstructuredExtractor
 	Mutex                 *sync.Mutex
 	GzipLastAppliedConfig bool
+	ServerSideApply       bool
+	ServerSideApplyForce  bool
 }
 
 // Provider ...
@@ -74,6 +78,18 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				Default:     true,
 				Description: "When 'true' compress the lastAppliedConfig annotation for resources that otherwise would exceed K8s' max annotation size. All other resources use the regular uncompressed annotation. Set to 'false' to disable compression entirely.",
+			},
+			"server_side_apply": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "When 'true' use server-side apply.",
+			},
+			"server_side_apply_force": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "When 'true' the server-side apply will overwrite any managed fields that another owner has claimed.",
 			},
 		},
 	}
@@ -134,7 +150,14 @@ func Provider() *schema.Provider {
 			return nil, fmt.Errorf("provider kustomization: %s", err)
 		}
 
-		mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+		cDc := memory.NewMemCacheClient(dc)
+
+		mapper := restmapper.NewDeferredDiscoveryRESTMapper(cDc)
+
+		extractor, err := metav1ac.NewUnstructuredExtractor(cDc)
+		if err != nil {
+			return nil, fmt.Errorf("provider kustomization: %s", err)
+		}
 
 		// Mutex to prevent parallel Kustomizer runs
 		// temp workaround for upstream bug
@@ -142,8 +165,18 @@ func Provider() *schema.Provider {
 		mu := &sync.Mutex{}
 
 		gzipLastAppliedConfig := d.Get("gzip_last_applied_config").(bool)
+		serverSideApply := d.Get("server_side_apply").(bool)
+		serverSideApplyForce := d.Get("server_side_apply_force").(bool)
 
-		return &Config{client, mapper, mu, gzipLastAppliedConfig}, nil
+		return &Config{
+			Client:                client,
+			Mapper:                mapper,
+			Extractor:             extractor,
+			Mutex:                 mu,
+			GzipLastAppliedConfig: gzipLastAppliedConfig,
+			ServerSideApply:       serverSideApply,
+			ServerSideApplyForce:  serverSideApplyForce,
+		}, nil
 	}
 
 	return p
