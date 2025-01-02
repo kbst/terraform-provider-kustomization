@@ -48,6 +48,11 @@ provider "kustomization" {
 - `context` - (Optional) Context to use in kubeconfig with multiple contexts, if not specified the default context is used.
 - `legacy_id_format` - (Optional) Defaults to `false`. Provided for backward compability, set to `true` to use the legacy ID format. Removed starting `0.9.0`.
 - `gzip_last_applied_config` - (Optional) Defaults to `true`. Use a gzip compressed and base64 encoded value for the lastAppliedConfig annotation if a resource would otherwise exceed the Kubernetes max annotation size. All other resources use the regular uncompressed annotation. Set to `false` to never use the compressed annotation.
+- `exec` - (Optional) Configuration block to use an [exec-based credential plugin] (https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins), e.g. call an external command to receive user credentials.
+    - `api_version` - (Required) API version to use when decoding the ExecCredentials resource, e.g. `client.authentication.k8s.io/v1beta1`.
+    - `command` - (Required) Command to execute.
+    - `args` - (Optional) List of arguments to pass when executing the plugin.
+    - `env` - (Optional) Map of environment variables to set when executing the plugin.
 
 ## Migrating resource IDs from legacy format to format enabling API version upgrades
 

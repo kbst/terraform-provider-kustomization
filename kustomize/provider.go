@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -75,12 +76,41 @@ func Provider() *schema.Provider {
 				Default:     true,
 				Description: "When 'true' compress the lastAppliedConfig annotation for resources that otherwise would exceed K8s' max annotation size. All other resources use the regular uncompressed annotation. Set to 'false' to disable compression entirely.",
 			},
+			"exec": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"api_version": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"command": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"env": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"args": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+					},
+				},
+				Description: "",
+			},
 		},
 	}
 
 	p.ConfigureFunc = func(d *schema.ResourceData) (interface{}, error) {
 		var config *rest.Config
 		var err error
+		overrides := &clientcmd.ConfigOverrides{}
 
 		raw := d.Get("kubeconfig_raw").(string)
 		path := d.Get("kubeconfig_path").(string)
@@ -111,6 +141,22 @@ func Provider() *schema.Provider {
 			if err != nil {
 				return nil, fmt.Errorf("provider kustomization: couldn't load in cluster config: %s", err)
 			}
+		}
+
+		if v, ok := d.GetOk("exec"); ok {
+			exec := &clientcmdapi.ExecConfig{}
+			if spec, ok := v.([]interface{})[0].(map[string]interface{}); ok {
+				exec.InteractiveMode = clientcmdapi.IfAvailableExecInteractiveMode
+				exec.APIVersion = spec["api_version"].(string)
+				exec.Command = spec["command"].(string)
+				exec.Args = expandStringSlice(spec["args"].([]interface{}))
+				for kk, vv := range spec["env"].(map[string]interface{}) {
+					exec.Env = append(exec.Env, clientcmdapi.ExecEnvVar{Name: kk, Value: vv.(string)})
+				}
+			} else {
+				return nil, fmt.Errorf("Failed to parse exec")
+			}
+			overrides.AuthInfo.Exec = exec
 		}
 
 		// empty default config required to support
