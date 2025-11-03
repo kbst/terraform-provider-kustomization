@@ -16,6 +16,7 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
@@ -60,10 +61,36 @@ func setLastAppliedConfig(km *kManifest, gzipLastAppliedConfig bool) {
 	km.json, _ = km.resource.MarshalJSON()
 }
 
+func extractLastAppliedConfig(u *k8sunstructured.Unstructured, ex metav1ac.UnstructuredExtractor, gzipLastAppliedConfig bool) (lac string) {
+	ac, err := ex.Extract(u, fieldManager)
+	if err == nil {
+		ans := ac.GetAnnotations()
+		delete(ans, lastAppliedConfigAnnotation)
+		delete(ans, gzipLastAppliedConfigAnnotation)
+		ac.SetAnnotations(ans)
+		if len(ans) == 0 {
+			ac.SetAnnotations(nil)
+		}
+
+		b, err := ac.MarshalJSON()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return strings.TrimRight(string(b), "\r\n")
+	}
+
+	// fall back to annotation if extract failed
+	return getLastAppliedConfig(u, gzipLastAppliedConfig)
+}
+
 func getLastAppliedConfig(u *k8sunstructured.Unstructured, gzipLastAppliedConfig bool) (lac string) {
 	annotations := u.GetAnnotations()
 
-	lac = u.GetAnnotations()[lastAppliedConfigAnnotation]
+	lac, ok := annotations[lastAppliedConfigAnnotation]
+	if !ok {
+		lac = "{}"
+	}
 
 	if gzipLastAppliedConfig {
 		// read the compressed lac if available
@@ -110,7 +137,7 @@ func getPatch(gvk k8sschema.GroupVersionKind, original []byte, modified []byte, 
 		}
 	case err != nil:
 		return pt, p, fmt.Errorf("getPatch failed: %s", err)
-	case err == nil:
+	default:
 		pt = k8stypes.StrategicMergePatchType
 
 		lookupPatchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)

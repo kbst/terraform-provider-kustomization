@@ -181,7 +181,7 @@ func TestDataSourceKustomizationOverlay_labels(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_labels(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\",\"test-label\":\"true\",\"test-label-selector\":\"true\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\",\"test-label-selector\":\"true\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\",\"test-label-selector\":\"true\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\",\"test-label\":\"true\",\"test-label-selector\":\"true\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\",\"test-label-selector\":\"true\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\",\"test-label-selector\":\"true\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\"}]}}}}"),
 				),
 			},
 		},
@@ -348,7 +348,7 @@ func TestDataSourceKustomizationOverlay_name_prefix_suffix(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_name_prefix_suffix(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test-test-test\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"test\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"test\"},\"name\":\"test-test-test\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"test\"},\"type\":\"ClusterIP\"}}"),
 				),
 			},
 		},
@@ -414,7 +414,7 @@ func TestDataSourceKustomizationOverlay_transformers(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testDataSourceKustomizationOverlayConfig_transformers(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\",\"test.example.com/test-label\":\"test-value\"},\"name\":\"test\",\"namespace\":\"test-transformer-config\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\",\"test.example.com/test-label\":\"test-value\"},\"name\":\"test\",\"namespace\":\"test-transformer-config\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\"}]}}}}"),
 			},
 		},
 	})
@@ -558,7 +558,7 @@ func TestDataSourceKustomizationOverlay_images(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testKustomizationImagesConfig(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"testname:testtag@sha256:abcdefghijklmnop123456\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"testname:testtag@sha256:abcdefghijklmnop123456\",\"name\":\"nginx\"}]}}}}"),
 			},
 		},
 	})
@@ -595,7 +595,7 @@ func TestDataSourceKustomizationOverlay_patches(t *testing.T) {
 			{
 				Config: testKustomizationPatchesConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check_dep", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"true\"}],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("check_dep", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"true\"}],\"image\":\"nginx\",\"name\":\"nginx\"}]}}}}"),
 					resource.TestCheckOutput("check_ingress", "{\"apiVersion\":\"networking.k8s.io/v1\",\"kind\":\"Ingress\",\"metadata\":{\"annotations\":{\"nginx.ingress.kubernetes.io/rewrite-target\":\"/\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"rules\":[{\"http\":{\"paths\":[{\"backend\":{\"service\":{\"name\":\"test\",\"port\":{\"number\":80}}},\"path\":\"/testpath\",\"pathType\":\"Prefix\"}]}}]}}"),
 				),
 			},
@@ -889,7 +889,7 @@ func TestDataSourceKustomizationOverlay_replicas(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testKustomizationReplicasConfig(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":5,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":5,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\"}]}}}}"),
 			},
 		},
 	})
@@ -982,7 +982,7 @@ func TestDataSourceKustomizationOverlay_vars(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testKustomizationVarsConfig(),
-				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"test-basic\"}],\"image\":\"nginx\",\"name\":\"nginx\",\"resources\":{}}]}}},\"status\":{}}"),
+				Check:  resource.TestCheckOutput("check", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"test\"},\"name\":\"test\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"test\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"test\"}},\"spec\":{\"containers\":[{\"env\":[{\"name\":\"TESTENV\",\"value\":\"test-basic\"}],\"image\":\"nginx\",\"name\":\"nginx\"}]}}}}"),
 			},
 		},
 	})
@@ -1146,7 +1146,7 @@ func TestDataSourceKustomizationOverlay_commonAnnotations_helm(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_commonAnnotations_helm(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
+					resource.TestCheckOutput("check", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"annotations\":{\"test-annotation\":\"true\"},\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"}}"),
 				),
 			},
 		},
@@ -1186,8 +1186,8 @@ func TestDataSourceKustomizationOverlay_helm_charts_attr(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_helm_charts_attr(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"test-basic\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\"}]}}}}"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "3"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids_prio.#", "3"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "3"),
@@ -1246,8 +1246,8 @@ func TestDataSourceKustomizationOverlay_helm_charts_releasename(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_helm_charts_releasename(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"my-release\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"my-release\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-releasename\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"my-release\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"my-release\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"my-release\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-releasename\"}]}}}}"),
 				),
 			},
 		},
@@ -1299,8 +1299,8 @@ func TestDataSourceKustomizationOverlay_helm_charts_valuesFile(t *testing.T) {
 					//   replicas = 1, port = 80,  image name = nginx
 					// overridden in alt-values.yaml
 					//   replicas = 2, port = 443, image name = my-nginx
-					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":2,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":2,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:6.0.10\",\"name\":\"test-basic\"}]}}}}"),
 				),
 			},
 		},
@@ -1352,8 +1352,8 @@ func TestDataSourceKustomizationOverlay_helm_charts_valuesInline(t *testing.T) {
 					//   replicas = 1, port = 80,  image name = nginx
 					// overridden to:
 					//   replicas = 2, port = 443, image name = my-nginx
-					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":2,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":2,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:6.0.10\",\"name\":\"test-basic\"}]}}}}"),
 				),
 			},
 		},
@@ -1421,8 +1421,8 @@ func TestDataSourceKustomizationOverlay_helm_charts_valuesMerge(t *testing.T) {
 					//   port = 443
 					//   image name = my-nginx
 					//   image tag = "7.0.0"
-					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:7.0.0\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":443,\"protocol\":\"TCP\",\"targetPort\":443}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":3,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"my-nginx:7.0.0\",\"name\":\"test-basic\"}]}}}}"),
 				),
 			},
 		},
@@ -1479,8 +1479,8 @@ func TestDataSourceKustomizationOverlay_helm_charts_includeCrds(t *testing.T) {
 			{
 				Config: testDataSourceKustomizationOverlayConfig_helm_charts_includeCrds(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\"}]}}}}"),
 					resource.TestCheckOutput("crd", "{\"apiVersion\":\"apiextensions.k8s.io/v1\",\"kind\":\"CustomResourceDefinition\",\"metadata\":{\"name\":\"crontabs.stable.example.com\"},\"spec\":{\"group\":\"stable.example.com\",\"names\":{\"kind\":\"CronTab\",\"plural\":\"crontabs\",\"shortNames\":[\"ct\"],\"singular\":\"crontab\"},\"scope\":\"Namespaced\",\"versions\":[{\"name\":\"v1\",\"schema\":{\"openAPIV3Schema\":{\"properties\":{\"spec\":{\"properties\":{\"cronSpec\":{\"type\":\"string\"},\"image\":{\"type\":\"string\"},\"replicas\":{\"type\":\"integer\"}},\"type\":\"object\"}},\"type\":\"object\"}},\"served\":true,\"storage\":true}]}}"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "4"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids_prio.#", "3"),
@@ -1537,8 +1537,8 @@ func TestDataSourceKustomizationOverlay_helm_charts_skipTestsFalse(t *testing.T)
 			{
 				Config: testDataSourceKustomizationOverlayConfig_helm_charts_skipTestsFalse(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\"}]}}}}"),
 					resource.TestCheckOutput("test_pod", "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"annotations\":{\"helm.sh/hook\":\"test\"},\"name\":\"nginx-test-connection\"},\"spec\":{\"containers\":[{\"args\":[\"nginx:80/testpath\"],\"command\":[\"wget\"],\"image\":\"busybox\",\"name\":\"wget\"}],\"restartPolicy\":\"Never\"}}"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "4"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids_prio.#", "3"),
@@ -1592,10 +1592,10 @@ func TestDataSourceKustomizationOverlay_helm_charts_multiple_charts(t *testing.T
 			{
 				Config: testDataSourceKustomizationOverlayConfig_helm_charts_multiple_charts(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckOutput("service_1", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment_1", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\",\"resources\":{}}]}}},\"status\":{}}"),
-					resource.TestCheckOutput("service_2", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"my-release\"},\"type\":\"ClusterIP\"},\"status\":{\"loadBalancer\":{}}}"),
-					resource.TestCheckOutput("deployment_2", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"my-release\"}},\"strategy\":{},\"template\":{\"metadata\":{\"creationTimestamp\":null,\"labels\":{\"app\":\"my-release\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-releasename\",\"resources\":{}}]}}},\"status\":{}}"),
+					resource.TestCheckOutput("service_1", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"nginx\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment_1", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-basic\"}]}}}}"),
+					resource.TestCheckOutput("service_2", "{\"apiVersion\":\"v1\",\"kind\":\"Service\",\"metadata\":{\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"protocol\":\"TCP\",\"targetPort\":80}],\"selector\":{\"app\":\"my-release\"},\"type\":\"ClusterIP\"}}"),
+					resource.TestCheckOutput("deployment_2", "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"labels\":{\"app\":\"my-release\"},\"name\":\"my-release\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"my-release\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"my-release\"}},\"spec\":{\"containers\":[{\"image\":\"nginx:6.0.10\",\"name\":\"test-releasename\"}]}}}}"),
 					// 3 manifests from first chart, 3 from second chart
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "ids.#", "6"),
 					resource.TestCheckResourceAttr("data.kustomization_overlay.test", "manifests.%", "6"),
