@@ -133,10 +133,9 @@ func getKustomizeOptions(d *schema.ResourceData) (opts *krusty.Options) {
 
 	enableHelm := getBoolOpt("enable_helm")
 	enableExec := getBoolOpt("enable_exec")
-	enableStar := getBoolOpt("enable_star")
 
 	enableAlphaPlugins := getBoolOpt("enable_alpha_plugins")
-	enableAlphaPlugins = enableAlphaPlugins || enableHelm || enableExec || enableStar
+	enableAlphaPlugins = enableAlphaPlugins || enableHelm || enableExec
 
 	if enableAlphaPlugins {
 		opts.PluginConfig = types.EnabledPluginConfig(types.BploUseStaticallyLinked)
@@ -149,7 +148,6 @@ func getKustomizeOptions(d *schema.ResourceData) (opts *krusty.Options) {
 	}
 
 	opts.PluginConfig.FnpLoadingOptions.EnableExec = enableExec
-	opts.PluginConfig.FnpLoadingOptions.EnableStar = enableStar
 	opts.PluginConfig.HelmConfig.Enabled = enableHelm
 
 	if enableHelm && kOpts["helm_path"] != nil {

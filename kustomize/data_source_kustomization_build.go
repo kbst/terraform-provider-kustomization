@@ -39,10 +39,6 @@ func dataSourceKustomization() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 						},
-						"enable_star": {
-							Type:     schema.TypeBool,
-							Optional: true,
-						},
 						"helm_path": {
 							Type:     schema.TypeString,
 							Optional: true,
