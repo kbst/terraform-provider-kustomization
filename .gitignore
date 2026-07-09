@@ -4,3 +4,4 @@ terraform.d
 crash.log
 dist/
 kustomize/test_kustomizations/helm/remote/
+.vscode/
